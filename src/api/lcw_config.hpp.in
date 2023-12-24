@@ -1,0 +1,7 @@
+#ifndef LCW_LCW_CONFIG_HPP
+#define LCW_LCW_CONFIG_HPP
+
+#cmakedefine LCW_ENABLE_BACKEND_LCI
+#cmakedefine LCW_ENABLE_BACKEND_MPI
+
+#endif  // LCW_LCW_CONFIG_HPP
