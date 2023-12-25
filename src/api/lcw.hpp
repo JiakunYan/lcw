@@ -10,8 +10,8 @@
 #include "lcw_config.hpp"
 #define LCW_API __attribute__((visibility("default")))
 
-namespace lcw {
-
+namespace lcw
+{
 /**
  * @defgroup LCWX_ARGS LCWX Extendable arguments
  * @ingroup LCW_API
@@ -85,11 +85,7 @@ using comp_t = comp_opaque_t*;
  * @ingroup LCW_COMM
  * @brief operation code
  */
-enum class op_t {
-  SEND,
-  RECV,
-  PUT
-};
+enum class op_t { SEND, RECV, PUT };
 
 /**
  * @ingroup LCW_COMP
@@ -100,11 +96,11 @@ struct request_t {
   device_t device;
   rank_t rank;
   tag_t tag;
-  void *buffer;
+  void* buffer;
   int64_t length;
-  void *user_context;
+  void* user_context;
 };
- 
+
 /**
  * @ingroup LCW_SETUP
  * @brief Initialize the LCW runtime. No LCW calls are allowed to be called
@@ -149,7 +145,7 @@ LCW_API device_t alloc_device();
  * @brief Free a device.
  * @param device the device to be freed.
  */
-LCW_API void free_device(device_t *device);
+LCW_API void free_device(device_t* device);
 
 /**
  * @ingroup LCW_COMM
@@ -174,32 +170,29 @@ LCW_API void free_cq(comp_t completion);
  * @ingroup LCW_COMP
  * @brief poll a completion queue.
  */
-LCW_API bool poll_cq(comp_t completion, request_t *request);
+LCW_API bool poll_cq(comp_t completion, request_t* request);
 
 /**
  * @ingroup LCW_COMM
  * @brief post a send
  */
-LCW_API bool send(device_t device, rank_t rank, tag_t tag,
-                  void *buf, int64_t length,
-                  comp_t completion, void *user_context);
+LCW_API bool send(device_t device, rank_t rank, tag_t tag, void* buf,
+                  int64_t length, comp_t completion, void* user_context);
 
 /**
  * @ingroup LCW_COMM
  * @brief post a receive
  */
-LCW_API void recv(device_t device, rank_t rank, tag_t tag,
-                  void *buf, int64_t length,
-                  comp_t completion, void *user_context);
+LCW_API bool recv(device_t device, rank_t rank, tag_t tag, void* buf,
+                  int64_t length, comp_t completion, void* user_context);
 
 /**
  * @ingroup LCW_COMM
  * @brief post a put
  */
-LCW_API void put(device_t device, rank_t rank,
-                 void *buf, int64_t length,
-                 comp_t completion, void *user_context);
+LCW_API bool put(device_t device, rank_t rank, void* buf, int64_t length,
+                 comp_t completion, void* user_context);
 
-} // namespace lcw
+}  // namespace lcw
 
-#endif //LCW_LCW_HPP
+#endif  // LCW_LCW_HPP

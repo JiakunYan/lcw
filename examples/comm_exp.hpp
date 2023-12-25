@@ -21,6 +21,23 @@ void set_affinity(pthread_t pthread_handler, size_t target)
   }
 }
 
+void write_buffer(char* buf, size_t size, unsigned int seed)
+{
+  for (int i = 0; i < size; ++i) {
+    buf[i] = static_cast<char>(rand_r(&seed));
+  }
+}
+
+bool check_buffer(const char* buf, size_t size, unsigned int seed)
+{
+  for (int i = 0; i < size; ++i) {
+    if (buf[i] != static_cast<char>(rand_r(&seed))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static inline double wtime()
 {
   struct timeval t1;

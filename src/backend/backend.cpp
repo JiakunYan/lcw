@@ -1,6 +1,7 @@
 #include "lcwi.hpp"
 
-namespace lcw {
+namespace lcw
+{
 std::unique_ptr<backend_base_t> alloc_backend(backend_t backend)
 {
   switch (backend) {
@@ -21,4 +22,4 @@ std::unique_ptr<backend_base_t> alloc_backend(backend_t backend)
       return nullptr;
   }
 }
-} // namespace lcw
+}  // namespace lcw

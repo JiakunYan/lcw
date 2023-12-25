@@ -1,7 +1,8 @@
 #ifndef LCW_SPINLOCK_HPP
 #define LCW_SPINLOCK_HPP
 
-namespace lcw {
+namespace lcw
+{
 class spinlock_t
 {
  public:
@@ -18,6 +19,6 @@ class spinlock_t
  private:
   pthread_spinlock_t l;
 };
-} // namespace lcw
+}  // namespace lcw
 
 #endif  // LCW_SPINLOCK_HPP

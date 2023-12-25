@@ -9,8 +9,6 @@ option(LCI_BUILD_EXAMPLES "Build examples by default" ON)
 if(NOT LCI_BUILD_EXAMPLES)
   set(EXCLUDE_FROM_ALL ON)
 endif()
-add_lcw_examples(
-        hello_world.cpp
-        pingpong_mt.cpp)
+add_lcw_examples(hello_world.cpp pingpong_mt.cpp)
 find_package(Threads REQUIRED)
 target_link_libraries(pingpong_mt PRIVATE Threads::Threads)
