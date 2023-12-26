@@ -56,6 +56,7 @@ void worker_thread_fn(int thread_id)
     ret = posix_memalign(&recv_buffer, PAGESIZE, msg_size);
     assert(ret == 0);
     LCT_tbarrier_arrive_and_wait(tbarrier_worker);
+    auto start_time = LCT_now();
     for (int i = 0; i < config.niters; ++i) {
       char seed = 'a' + thread_id + i;
       if (config.test_mode) {
@@ -145,6 +146,19 @@ void worker_thread_fn(int thread_id)
       }
     }
     LCT_tbarrier_arrive_and_wait(tbarrier_worker);
+    auto total_time = LCT_now() - start_time;
+    double total_time_s = LCT_time_to_s(total_time);
+    double msg_rate = config.niters * nworkers / total_time_s;
+    double bandwidth = msg_rate * msg_size;
+    if (rank == 0) {
+      std::cout << "====================================\n"
+                << "Message size (B): " << msg_size << "\n"
+                << "Total time (s): " << total_time_s << "\n"
+                << "Latency (us): " << total_time_s * 1e6 / config.niters
+                << "\n"
+                << "Message Rate (K/s): " << msg_rate / 1e3 << "\n"
+                << "Bandwidth (MB/s): " << bandwidth / 1e6 << std::endl;
+    }
   }
 }
 
@@ -173,6 +187,7 @@ int main(int argc, char* argv[])
   LCT_args_parser_add(argsParser, "nprgthreads", required_argument,
                       &config.nprgthreads);
   LCT_args_parser_parse(argsParser, argc, argv);
+  LCT_args_parser_print(argsParser, true);
 
   lcw::initialize(lcw::backend_t::MPI);
   device = lcw::alloc_device();
