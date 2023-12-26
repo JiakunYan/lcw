@@ -33,9 +33,12 @@ const size_t PAGESIZE = sysconf(_SC_PAGESIZE);
 lcw::device_t device;
 Config config;
 static std::atomic<bool> progress_thread_stop(false);
+LCT_tbarrier_t tbarrier_all;
+LCT_tbarrier_t tbarrier_worker;
 
 void worker_thread_fn(int thread_id)
 {
+  LCT_tbarrier_arrive_and_wait(tbarrier_all);
   int64_t rank = lcw::get_rank();
   int64_t nranks = lcw::get_nranks();
   int64_t peer_rank = (rank + nranks / 2) % nranks;
@@ -52,6 +55,7 @@ void worker_thread_fn(int thread_id)
     assert(ret == 0);
     ret = posix_memalign(&recv_buffer, PAGESIZE, msg_size);
     assert(ret == 0);
+    LCT_tbarrier_arrive_and_wait(tbarrier_worker);
     for (int i = 0; i < config.niters; ++i) {
       char seed = 'a' + thread_id + i;
       if (config.test_mode) {
@@ -140,11 +144,13 @@ void worker_thread_fn(int thread_id)
         }
       }
     }
+    LCT_tbarrier_arrive_and_wait(tbarrier_worker);
   }
 }
 
 void progress_thread_fn(int thread_id)
 {
+  LCT_tbarrier_arrive_and_wait(tbarrier_all);
   while (progress_thread_stop) {
     lcw::do_progress(device);
   }
@@ -180,6 +186,8 @@ int main(int argc, char* argv[])
             "processor number (%lu).\n",
             config.nthreads, NPROCESSORS);
   }
+  tbarrier_all = LCT_tbarrier_alloc(config.nthreads);
+  tbarrier_worker = LCT_tbarrier_alloc(config.nthreads - config.nprgthreads);
   if (config.nthreads == 1) {
     worker_thread_fn(0);
   } else {
