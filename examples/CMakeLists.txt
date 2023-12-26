@@ -12,3 +12,14 @@ endif()
 add_lcw_examples(hello_world.cpp pingpong_mt.cpp)
 find_package(Threads REQUIRED)
 target_link_libraries(pingpong_mt PRIVATE Threads::Threads)
+find_package(
+  LCI
+  CONFIG
+  REQUIRED
+  HINTS
+  ${LCI_ROOT}
+  $ENV{LCI_ROOT}
+  PATH_SUFFIXES
+  lib/cmake
+  lib64/cmake)
+target_link_libraries(pingpong_mt PRIVATE LCI::LCT)

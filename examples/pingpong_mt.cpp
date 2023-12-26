@@ -5,7 +5,9 @@
 #include <cassert>
 #include <vector>
 #include <cstring>
+#include <getopt.h>
 #include "lcw.hpp"
+#include "lct.h"
 #include "comm_exp.hpp"
 
 /**
@@ -20,8 +22,8 @@ struct Config {
   int min_size = 8;
   int max_size = 8192;
   int niters = 10;
-  bool test_mode = false;
-  bool pin_thread = true;
+  int test_mode = 0;
+  int pin_thread = 1;
   int nprgthreads = 0;
 };
 
@@ -143,7 +145,6 @@ void worker_thread_fn(int thread_id)
 
 void progress_thread_fn(int thread_id)
 {
-  fprintf(stderr, "I am progress thread %d\n", thread_id);
   while (progress_thread_stop) {
     lcw::do_progress(device);
   }
@@ -151,10 +152,21 @@ void progress_thread_fn(int thread_id)
 
 int main(int argc, char* argv[])
 {
-  if (argc > 1) config.nthreads = atoi(argv[1]);
-  if (argc > 2) config.min_size = atoi(argv[3]);
-  if (argc > 3) config.max_size = atoi(argv[4]);
-  if (argc > 4) config.test_mode = atoi(argv[5]);
+  LCT_args_parser_t argsParser = LCT_args_parser_alloc();
+  LCT_args_parser_add(argsParser, "nthreads", required_argument,
+                      &config.nthreads);
+  LCT_args_parser_add(argsParser, "min-size", required_argument,
+                      &config.min_size);
+  LCT_args_parser_add(argsParser, "max-size", required_argument,
+                      &config.max_size);
+  LCT_args_parser_add(argsParser, "niters", required_argument, &config.niters);
+  LCT_args_parser_add(argsParser, "test-mode", required_argument,
+                      &config.test_mode);
+  LCT_args_parser_add(argsParser, "pin-thread", required_argument,
+                      &config.pin_thread);
+  LCT_args_parser_add(argsParser, "nprgthreads", required_argument,
+                      &config.nprgthreads);
+  LCT_args_parser_parse(argsParser, argc, argv);
 
   lcw::initialize(lcw::backend_t::MPI);
   device = lcw::alloc_device();
