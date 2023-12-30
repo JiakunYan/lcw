@@ -35,7 +35,7 @@ device_t backend_mpi_t::alloc_device()
   return reinterpret_cast<device_t>(device_p);
 }
 
-void backend_mpi_t::free_device(device_t* device)
+void backend_mpi_t::free_device(device_t device)
 {
   auto* device_p = reinterpret_cast<device_mpi_t*>(device);
   MPI_Comm_free(&device_p->comm_2sided);

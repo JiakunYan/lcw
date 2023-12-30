@@ -58,7 +58,7 @@ void worker_thread_fn(int thread_id)
     LCT_tbarrier_arrive_and_wait(tbarrier_worker);
     auto start_time = LCT_now();
     for (int i = 0; i < config.niters; ++i) {
-      char seed = 'a' + thread_id + i;
+      unsigned int seed = thread_id + i;
       if (config.test_mode) {
         write_buffer((char*)send_buffer, msg_size, seed);
         memset(recv_buffer, 0, msg_size);
@@ -233,6 +233,7 @@ int main(int argc, char* argv[])
       t.join();
     }
   }
+  lcw::free_device(device);
   lcw::finalize();
   return EXIT_SUCCESS;
 }

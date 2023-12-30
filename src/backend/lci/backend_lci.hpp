@@ -10,7 +10,7 @@ class backend_lci_t : public backend_base_t
   void initialize() override;
   void finalize() override;
   device_t alloc_device();
-  void free_device(device_t* device);
+  void free_device(device_t device);
   comp_t alloc_cq();
   void free_cq(comp_t completion);
   bool poll_cq(comp_t completion, request_t* request);

@@ -2,7 +2,7 @@
 
 namespace lcw
 {
-std::unique_ptr<backend_base_t> backend_p;
+std::unique_ptr<backend_base_t> backend_p(nullptr);
 
 void initialize(backend_t backend)
 {
@@ -20,13 +20,18 @@ void finalize()
   LCT_fina();
 }
 
+bool is_initialized()
+{
+  return backend_p != nullptr;
+}
+
 int64_t get_rank() { return backend_p->get_rank(); }
 
 int64_t get_nranks() { return backend_p->get_nranks(); }
 
 device_t alloc_device() { return backend_p->alloc_device(); }
 
-void free_device(device_t* device) { backend_p->free_device(device); }
+void free_device(device_t device) { backend_p->free_device(device); }
 
 bool do_progress(device_t device) { return backend_p->do_progress(device); }
 

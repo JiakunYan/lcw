@@ -24,7 +24,7 @@ class backend_mpi_t : public backend_base_t
   int64_t get_rank() override;
   int64_t get_nranks() override;
   device_t alloc_device() override;
-  void free_device(device_t* device) override;
+  void free_device(device_t device) override;
   bool do_progress(device_t device) override;
   comp_t alloc_cq() override;
   void free_cq(comp_t completion) override;

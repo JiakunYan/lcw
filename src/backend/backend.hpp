@@ -14,7 +14,7 @@ class backend_base_t
   virtual int64_t get_rank() = 0;
   virtual int64_t get_nranks() = 0;
   virtual device_t alloc_device() = 0;
-  virtual void free_device(device_t* device) = 0;
+  virtual void free_device(device_t device) = 0;
   virtual bool do_progress(device_t device) = 0;
   virtual comp_t alloc_cq() = 0;
   virtual void free_cq(comp_t completion) = 0;

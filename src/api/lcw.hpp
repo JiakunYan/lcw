@@ -145,7 +145,7 @@ LCW_API device_t alloc_device();
  * @brief Free a device.
  * @param device the device to be freed.
  */
-LCW_API void free_device(device_t* device);
+LCW_API void free_device(device_t device);
 
 /**
  * @ingroup LCW_COMM
