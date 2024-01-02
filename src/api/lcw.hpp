@@ -85,7 +85,7 @@ using comp_t = comp_opaque_t*;
  * @ingroup LCW_COMM
  * @brief operation code
  */
-enum class op_t { SEND, RECV, PUT };
+enum class op_t { SEND, RECV, PUT, PUT_SIGNAL };
 
 /**
  * @ingroup LCW_COMP
@@ -138,7 +138,8 @@ LCW_API int64_t get_nranks();
  * @brief Allocate a device.
  * @return The device allocated.
  */
-LCW_API device_t alloc_device();
+LCW_API device_t alloc_device(int64_t max_put_length = 0,
+                              comp_t put_comp = nullptr);
 
 /**
  * @ingroup LCW_DEVICE

@@ -20,16 +20,16 @@ void finalize()
   LCT_fina();
 }
 
-bool is_initialized()
-{
-  return backend_p != nullptr;
-}
+bool is_initialized() { return backend_p != nullptr; }
 
 int64_t get_rank() { return backend_p->get_rank(); }
 
 int64_t get_nranks() { return backend_p->get_nranks(); }
 
-device_t alloc_device() { return backend_p->alloc_device(); }
+device_t alloc_device(int64_t max_put_length, comp_t put_comp)
+{
+  return backend_p->alloc_device(max_put_length, put_comp);
+}
 
 void free_device(device_t device) { backend_p->free_device(device); }
 

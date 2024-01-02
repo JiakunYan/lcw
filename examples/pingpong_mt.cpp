@@ -18,6 +18,7 @@ void worker_thread_fn(int thread_id);
 void progress_thread_fn(int thread_id);
 
 struct Config {
+  lcw::op_t op = lcw::op_t::SEND;
   int nthreads = 1;
   int min_size = 8;
   int max_size = 8192;
@@ -31,6 +32,7 @@ const size_t NPROCESSORS = sysconf(_SC_NPROCESSORS_ONLN);
 const size_t PAGESIZE = sysconf(_SC_PAGESIZE);
 
 lcw::device_t device;
+lcw::comp_t cq;
 Config config;
 static std::atomic<bool> progress_thread_stop(false);
 LCT_tbarrier_t tbarrier_all;
@@ -45,7 +47,6 @@ void worker_thread_fn(int thread_id)
   bool need_progress = config.nprgthreads == 0;
   int nworkers = config.nthreads - config.nprgthreads;
   int tag = thread_id;
-  lcw::comp_t cq = lcw::alloc_cq();
   for (int msg_size = config.min_size; msg_size <= config.max_size;
        msg_size *= 2) {
     tag += nworkers;  // every message size uses different tag
@@ -172,7 +173,13 @@ void progress_thread_fn(int thread_id)
 
 int main(int argc, char* argv[])
 {
+  lcw::initialize(lcw::backend_t::MPI);
+
   LCT_args_parser_t argsParser = LCT_args_parser_alloc();
+  LCT_dict_str_int_t dict[] = {{"send", (int)lcw::op_t::SEND},
+                               {"put", (int)lcw::op_t::PUT}};
+  LCT_args_parser_add_dict(argsParser, "op", required_argument,
+                           (int*)&config.op, dict, 2);
   LCT_args_parser_add(argsParser, "nthreads", required_argument,
                       &config.nthreads);
   LCT_args_parser_add(argsParser, "min-size", required_argument,
@@ -187,10 +194,14 @@ int main(int argc, char* argv[])
   LCT_args_parser_add(argsParser, "nprgthreads", required_argument,
                       &config.nprgthreads);
   LCT_args_parser_parse(argsParser, argc, argv);
-  LCT_args_parser_print(argsParser, true);
+  if (lcw::get_rank() == 0) LCT_args_parser_print(argsParser, true);
+  LCT_args_parser_free(argsParser);
 
-  lcw::initialize(lcw::backend_t::MPI);
-  device = lcw::alloc_device();
+  cq = lcw::alloc_cq();
+  if (config.op == lcw::op_t::SEND)
+    device = lcw::alloc_device();
+  else
+    device = lcw::alloc_device(config.max_size, cq);
 
   assert(config.nthreads > config.nprgthreads);
   assert(config.nthreads > 0);

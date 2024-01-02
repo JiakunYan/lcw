@@ -9,7 +9,7 @@ class backend_lci_t : public backend_base_t
   backend_t get_backend() const override { return backend_t::LCI; }
   void initialize() override;
   void finalize() override;
-  device_t alloc_device();
+  device_t alloc_device(int64_t max_put_length, comp_t put_comp);
   void free_device(device_t device);
   comp_t alloc_cq();
   void free_cq(comp_t completion);
