@@ -40,6 +40,7 @@ struct device_t {
   MPI_Comm comm_2sided;
   MPI_Comm comm_1sided;
   std::vector<char> put_rbuf;
+  tag_t max_tag;
 };
 
 void push_cq(comp_t completion, mpi::cq_entry_t entry)
@@ -78,6 +79,12 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
   auto* device_p = new mpi::device_t;
   auto device = reinterpret_cast<device_t>(device_p);
   MPI_SAFECALL(MPI_Comm_dup(MPI_COMM_WORLD, &device_p->comm_2sided));
+  // get max tag
+  device_p->max_tag = 32767;
+  void* max_tag_p;
+  int flag;
+  MPI_Comm_get_attr(device_p->comm_2sided, MPI_TAG_UB, &max_tag_p, &flag);
+  if (flag) device_p->max_tag = *(int*)max_tag_p;
   // 1sided
   if (max_put_length > 0) {
     device_p->put_rbuf.resize(max_put_length);
@@ -146,7 +153,7 @@ bool backend_mpi_t::poll_cq(comp_t completion, request_t* request)
   }
   if (request->op == op_t::PUT_SIGNAL) {
     // Copy the data out and repost the receive
-    void* buffer = new char[request->length];
+    void* buffer = malloc(request->length);
     memcpy(buffer, request->buffer, request->length);
     request->buffer = buffer;
     post_put_recv(request->device, completion);
@@ -213,6 +220,12 @@ bool backend_mpi_t::put(device_t device, rank_t rank, void* buf, int64_t length,
                          device_p->comm_2sided, &entry.request));
   push_cq(completion, entry);
   return true;
+}
+
+tag_t backend_mpi_t::get_max_tag(device_t device)
+{
+  auto* device_p = reinterpret_cast<mpi::device_t*>(device);
+  return device_p->max_tag;
 }
 
 }  // namespace lcw

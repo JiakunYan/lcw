@@ -194,6 +194,8 @@ LCW_API bool recv(device_t device, rank_t rank, tag_t tag, void* buf,
 LCW_API bool put(device_t device, rank_t rank, void* buf, int64_t length,
                  comp_t completion, void* user_context);
 
+LCW_API tag_t get_max_tag(device_t device);
+
 }  // namespace lcw
 
 #endif  // LCW_LCW_HPP

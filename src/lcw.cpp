@@ -63,4 +63,6 @@ bool put(device_t device, rank_t rank, void* buf, int64_t length,
 {
   return backend_p->put(device, rank, buf, length, completion, user_context);
 }
+
+tag_t get_max_tag(device_t device) { return backend_p->get_max_tag(device); }
 }  // namespace lcw
