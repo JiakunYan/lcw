@@ -4,8 +4,8 @@
 
 namespace lcw
 {
-int rank = -1;
-int nranks = -1;
+int g_rank = -1;
+int g_nranks = -1;
 
 void backend_mpi_t::initialize()
 {
@@ -14,15 +14,15 @@ void backend_mpi_t::initialize()
       MPI_Init_thread(nullptr, nullptr, MPI_THREAD_MULTIPLE, &provided));
   LCW_Assert(provided == MPI_THREAD_MULTIPLE,
              "Cannot enable multithreaded MPI!\n");
-  MPI_SAFECALL(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
-  MPI_SAFECALL(MPI_Comm_size(MPI_COMM_WORLD, &nranks));
+  MPI_SAFECALL(MPI_Comm_rank(MPI_COMM_WORLD, &g_rank));
+  MPI_SAFECALL(MPI_Comm_size(MPI_COMM_WORLD, &g_nranks));
 }
 
 void backend_mpi_t::finalize() { MPI_SAFECALL(MPI_Finalize()); }
 
-int64_t backend_mpi_t::get_rank() { return rank; }
+int64_t backend_mpi_t::get_rank() { return g_rank; }
 
-int64_t backend_mpi_t::get_nranks() { return nranks; }
+int64_t backend_mpi_t::get_nranks() { return g_nranks; }
 
 namespace mpi
 {
@@ -51,7 +51,7 @@ void push_cq(comp_t completion, mpi::cq_entry_t entry)
   cq->lock.unlock();
 }
 
-const int PUT_SIGNAL_TAG = -1;
+const int PUT_SIGNAL_TAG = 0;
 }  // namespace mpi
 
 void post_put_recv(device_t device, comp_t completion)
@@ -62,14 +62,14 @@ void post_put_recv(device_t device, comp_t completion)
       .context = {
           .op = op_t::PUT_SIGNAL,
           .device = device,
-          .rank = rank,
+          .rank = -1,
           .tag = mpi::PUT_SIGNAL_TAG,
           .buffer = device_p->put_rbuf.data(),
           .length = static_cast<int64_t>(device_p->put_rbuf.size()),
           .user_context = nullptr,
       }};
   MPI_SAFECALL(MPI_Irecv(entry.context.buffer, entry.context.length, MPI_CHAR,
-                         entry.context.rank, entry.context.tag,
+                         MPI_ANY_SOURCE, entry.context.tag,
                          device_p->comm_1sided, &entry.request));
   mpi::push_cq(completion, entry);
 }
@@ -128,22 +128,27 @@ void backend_mpi_t::free_cq(comp_t completion)
 bool backend_mpi_t::poll_cq(comp_t completion, request_t* request)
 {
   auto* cq = reinterpret_cast<mpi::cq_t*>(completion);
-  if (!cq->lock.try_lock()) return false;
+  if (cq->entries.empty() || !cq->lock.try_lock()) return false;
+  if (cq->entries.empty()) {
+    cq->lock.unlock();
+    return false;
+  }
   auto entry = cq->entries.front();
   cq->entries.pop_front();
-  int flag = 0;
+  int succeed = 0;
   MPI_Status status;
   if (entry.request == MPI_REQUEST_NULL)
-    flag = 1;
+    succeed = 1;
   else {
-    MPI_SAFECALL(MPI_Test(&entry.request, &flag, &status));
+    MPI_SAFECALL(MPI_Test(&entry.request, &succeed, &status));
   }
-  if (flag) {
+  if (succeed) {
     *request = entry.context;
   } else {
     cq->entries.push_back(entry);
   }
   cq->lock.unlock();
+  if (!succeed) return false;
   if (request->op == op_t::RECV || request->op == op_t::PUT_SIGNAL) {
     int count;
     MPI_SAFECALL(MPI_Get_count(&status, MPI_CHAR, &count));
@@ -153,12 +158,14 @@ bool backend_mpi_t::poll_cq(comp_t completion, request_t* request)
   }
   if (request->op == op_t::PUT_SIGNAL) {
     // Copy the data out and repost the receive
-    void* buffer = malloc(request->length);
+    void* buffer;
+    int ret = posix_memalign(&buffer, LCW_CACHE_LINE, request->length);
+    LCW_Assert(ret == 0, "posix_memalign(%ld) failed!\n", request->length);
     memcpy(buffer, request->buffer, request->length);
     request->buffer = buffer;
     post_put_recv(request->device, completion);
   }
-  return flag;
+  return succeed;
 }
 
 bool backend_mpi_t::send(device_t device, rank_t rank, tag_t tag, void* buf,
@@ -217,7 +224,7 @@ bool backend_mpi_t::put(device_t device, rank_t rank, void* buf, int64_t length,
                            }};
   MPI_SAFECALL(MPI_Isend(entry.context.buffer, entry.context.length, MPI_CHAR,
                          entry.context.rank, entry.context.tag,
-                         device_p->comm_2sided, &entry.request));
+                         device_p->comm_1sided, &entry.request));
   push_cq(completion, entry);
   return true;
 }

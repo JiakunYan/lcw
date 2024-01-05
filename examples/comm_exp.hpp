@@ -23,19 +23,26 @@ void set_affinity(pthread_t pthread_handler, size_t target)
 
 void write_buffer(char* buf, size_t size, unsigned int seed)
 {
-  for (int i = 0; i < size; ++i) {
+  if (size <= sizeof(seed)) return;
+  memcpy(buf, &seed, sizeof(seed));
+  for (int i = sizeof(seed); i < size; ++i) {
     buf[i] = static_cast<char>(rand_r(&seed));
   }
 }
 
-bool check_buffer(const char* buf, size_t size, unsigned int seed)
+void check_buffer(const char* buf, size_t size)
 {
-  for (int i = 0; i < size; ++i) {
-    if (buf[i] != static_cast<char>(rand_r(&seed))) {
-      return false;
+  if (size <= sizeof(unsigned int)) return;
+  unsigned int seed;
+  memcpy(&seed, buf, sizeof(seed));
+  for (int i = sizeof(seed); i < size; ++i) {
+    char expected = static_cast<char>(rand_r(&seed));
+    if (buf[i] != expected) {
+      fprintf(stderr, "%ld: check buffer failed! buf[%d] (%d) != %d\n",
+              lcw::get_rank(), i, buf[i], expected);
+      abort();
     }
   }
-  return true;
 }
 
 static inline double wtime()

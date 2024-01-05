@@ -3,14 +3,11 @@
 
 #include <mpi.h>
 
-#define MPI_SAFECALL(stmt)                                            \
-  do {                                                                \
-    int mpi_errno = (stmt);                                           \
-    if (MPI_SUCCESS != mpi_errno) {                                   \
-      fprintf(stderr, "[%s:%d] MPI call failed with %d \n", __FILE__, \
-              __LINE__, mpi_errno);                                   \
-      exit(EXIT_FAILURE);                                             \
-    }                                                                 \
+#define MPI_SAFECALL(stmt)                                             \
+  do {                                                                 \
+    int mpi_errno = (stmt);                                            \
+    LCW_Assert(MPI_SUCCESS == mpi_errno, "MPI call failed with %d \n", \
+               mpi_errno);                                             \
   } while (0)
 
 namespace lcw

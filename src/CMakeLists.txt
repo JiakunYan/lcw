@@ -1,6 +1,6 @@
 add_library(lcw)
-target_sources(lcw PRIVATE lcw.cpp logger/logger.cpp backend/backend.cpp
-                           backend/mpi/backend_mpi.cpp)
+target_sources(lcw PRIVATE lcw.cpp env.cpp logger/logger.cpp
+                           backend/backend.cpp backend/mpi/backend_mpi.cpp)
 target_include_directories(
   lcw
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
