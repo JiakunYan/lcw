@@ -199,6 +199,8 @@ void worker_thread_fn(int thread_id)
                 << "Bandwidth (MB/s): " << bandwidth / 1e6 << std::endl;
     }
   }
+  lcw::free_cq(scq);
+  if (config.op == lcw::op_t::SEND) lcw::free_cq(rcq);
 }
 
 void progress_thread_fn(int thread_id)
@@ -283,6 +285,7 @@ int main(int argc, char* argv[])
     }
   }
   lcw::free_device(device);
+  lcw::free_cq(put_cq);
   lcw::finalize();
   return EXIT_SUCCESS;
 }
