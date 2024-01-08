@@ -17,13 +17,27 @@ include(AddLCW)
 # General Options
 # ##############################################################################
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+
+# ##############################################################################
+# What parts of LCI to build
+# ##############################################################################
+option(LCW_WITH_EXAMPLES "Build LCW examples" ON)
+
+# ##############################################################################
+# LCW Options
+# ##############################################################################
 option(LCW_DEBUG "Enable debugging build" OFF)
 set(LCW_CACHE_LINE
     64
     CACHE STRING "Size of cache line (bytes)")
 
+# ##############################################################################
+# Add subdirectories
+# ##############################################################################
 add_subdirectory(src)
-add_subdirectory(examples)
+if(LCW_WITH_EXAMPLES)
+  add_subdirectory(examples)
+endif()
 
 # ##############################################################################
 # Install
