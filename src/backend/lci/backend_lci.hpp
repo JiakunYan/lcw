@@ -1,6 +1,12 @@
 #ifndef LCW_BACKEND_LCI_HPP
 #define LCW_BACKEND_LCI_HPP
 
+#define LCI_SAFECALL(stmt)                                                    \
+  do {                                                                        \
+    int lci_errno = (stmt);                                                   \
+    LCW_Assert(LCI_OK == lci_errno, "LCI call failed with %d \n", lci_errno); \
+  } while (0)
+
 namespace lcw
 {
 class backend_lci_t : public backend_base_t
@@ -9,8 +15,11 @@ class backend_lci_t : public backend_base_t
   backend_t get_backend() const override { return backend_t::LCI; }
   void initialize() override;
   void finalize() override;
-  device_t alloc_device(int64_t max_put_length, comp_t put_comp);
-  void free_device(device_t device);
+  int64_t get_rank() override;
+  int64_t get_nranks() override;
+  device_t alloc_device(int64_t max_put_length, comp_t put_comp) override;
+  void free_device(device_t device) override;
+  bool do_progress(device_t device) override;
   comp_t alloc_cq();
   void free_cq(comp_t completion);
   bool poll_cq(comp_t completion, request_t* request);

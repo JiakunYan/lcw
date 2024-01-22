@@ -1,6 +1,6 @@
 add_library(lcw)
 target_sources(lcw PRIVATE lcw.cpp env.cpp logger/logger.cpp
-                           backend/backend.cpp backend/mpi/backend_mpi.cpp)
+                           backend/backend.cpp)
 target_include_directories(
   lcw
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -23,6 +23,7 @@ target_link_libraries(lcw PRIVATE LCI::LCT)
 if(LCW_TRY_ENABLE_BACKEND_LCI AND NOT LCI_WITH_LCT_ONLY)
   set(LCW_ENABLE_BACKEND_LCI ON)
   target_link_libraries(lcw PRIVATE LCI::LCI)
+  target_sources(lcw PRIVATE backend/lci/backend_lci.cpp)
 else()
   message(WARNING "LCI is not found. The LCI backend if not enabled.")
 endif()
@@ -34,6 +35,7 @@ if(LCW_TRY_ENABLE_BACKEND_MPI)
   if(MPI_FOUND)
     set(LCW_ENABLE_BACKEND_MPI ON)
     target_link_libraries(lcw PRIVATE MPI::MPI_CXX)
+    target_sources(lcw PRIVATE backend/mpi/backend_mpi.cpp)
   else()
     message(WARNING "MPI is not found. The MPI backend if not enabled.")
   endif()

@@ -1,8 +1,6 @@
 #ifndef LCW_BACKEND_MPI_HPP
 #define LCW_BACKEND_MPI_HPP
 
-#include <mpi.h>
-
 #define MPI_SAFECALL(stmt)                                             \
   do {                                                                 \
     int mpi_errno = (stmt);                                            \

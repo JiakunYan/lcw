@@ -4,6 +4,20 @@ namespace lcw
 {
 std::unique_ptr<backend_base_t> alloc_backend(backend_t backend)
 {
+  if (backend == backend_t::AUTO) {
+    // Default auto backend is MPI.
+    backend = backend_t::MPI;
+    // Check env var setting
+    char* p = getenv("LCW_BACKEND_AUTO");
+    if (p) {
+      std::string str(p);
+      if (str == "mpi") {
+        backend = backend_t::MPI;
+      } else if (str == "lci") {
+        backend = backend_t::LCI;
+      }
+    }
+  }
   switch (backend) {
     case backend_t::LCI:
 #ifdef LCW_ENABLE_BACKEND_LCI

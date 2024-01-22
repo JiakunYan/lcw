@@ -1,5 +1,6 @@
 #include <vector>
 #include <cstring>
+#include <mpi.h>
 #include "lcwi.hpp"
 
 namespace lcw

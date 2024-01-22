@@ -17,7 +17,7 @@ class Lcw(CMakePackage):
         except ValueError:
             return val == 'auto'
 
-    variant('backend', default='mpi', values=('mpi', 'lci'), multi=True,
+    variant('backend', default='mpi,lci', values=('mpi', 'lci'), multi=True,
             description='Communication backend')
     variant('shared', default=True,  description='Build with shared libraries')
     variant('examples', default=True, description='Build LCW examples')

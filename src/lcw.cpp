@@ -8,8 +8,10 @@ void init_env();
 
 void initialize(backend_t backend)
 {
-  LCW_Assert(backend_p == nullptr,
-             "LCW has not been initialized or has been finalized!\n");
+  if (backend_p) {
+    fprintf(stderr, "LCW has not been initialized or has been finalized!\n");
+    abort();
+  }
   LCT_init();
   LCWI_log_init();
   init_env();

@@ -111,7 +111,7 @@ void worker_thread_fn(int thread_id)
           if (need_progress) lcw::do_progress(device);
         }
         if (config.test_mode) {
-          assert(rreq.device == device);
+          assert(rreq.device == device || rreq.op == lcw::op_t::PUT_SIGNAL);
           assert(rreq.length == msg_size);
           assert(rreq.op == ((config.op == lcw::op_t::SEND)
                                  ? lcw::op_t::RECV
@@ -206,15 +206,13 @@ void worker_thread_fn(int thread_id)
 void progress_thread_fn(int thread_id)
 {
   LCT_tbarrier_arrive_and_wait(tbarrier_all);
-  while (progress_thread_stop) {
+  while (!progress_thread_stop) {
     lcw::do_progress(device);
   }
 }
 
 int main(int argc, char* argv[])
 {
-  lcw::initialize(lcw::backend_t::MPI);
-
   LCT_args_parser_t argsParser = LCT_args_parser_alloc();
   LCT_dict_str_int_t dict[] = {{"send", (int)lcw::op_t::SEND},
                                {"put", (int)lcw::op_t::PUT}};
@@ -234,6 +232,8 @@ int main(int argc, char* argv[])
   LCT_args_parser_add(argsParser, "nprgthreads", required_argument,
                       &config.nprgthreads);
   LCT_args_parser_parse(argsParser, argc, argv);
+
+  lcw::initialize();
   if (lcw::get_rank() == 0) LCT_args_parser_print(argsParser, true);
   LCT_args_parser_free(argsParser);
 

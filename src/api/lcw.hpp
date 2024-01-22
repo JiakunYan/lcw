@@ -51,6 +51,7 @@ namespace lcw
  * @brief enum class for backend
  */
 enum class backend_t {
+  AUTO,
   LCI,
   MPI,
 };
@@ -106,7 +107,7 @@ struct request_t {
  * @brief Initialize the LCW runtime. No LCW calls are allowed to be called
  * before LCW_initialize except @ref LCW_initialized.
  */
-LCW_API void initialize(backend_t backend);
+LCW_API void initialize(backend_t backend = backend_t::AUTO);
 
 /**
  * @ingroup LCW_SETUP
