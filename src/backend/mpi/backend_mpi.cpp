@@ -68,10 +68,10 @@ struct progress_engine_t {
 };
 
 struct device_t {
-  MPI_Comm comm_2sided;
-  MPI_Comm comm_1sided;
+  MPI_Comm comm;
   std::vector<char> put_rbuf;
-  tag_t max_tag;
+  tag_t max_tag_2sided;
+  tag_t put_tag;
   progress_engine_t pengine;
 };
 
@@ -81,8 +81,6 @@ void add_to_progress_engine(mpi::device_t* device, mpi::progress_entry_t entry)
   device->pengine.entries.push_back(entry);
   device->pengine.entries_lock.unlock();
 }
-
-const int PUT_SIGNAL_TAG = 0;
 }  // namespace mpi
 
 void post_put_recv(device_t device, comp_t completion)
@@ -95,14 +93,14 @@ void post_put_recv(device_t device, comp_t completion)
           .op = op_t::PUT_SIGNAL,
           .device = device,
           .rank = -1,
-          .tag = mpi::PUT_SIGNAL_TAG,
+          .tag = device_p->put_tag,
           .buffer = device_p->put_rbuf.data(),
           .length = static_cast<int64_t>(device_p->put_rbuf.size()),
           .user_context = nullptr,
       }};
   MPI_SAFECALL(MPI_Irecv(entry.request->buffer, entry.request->length, MPI_CHAR,
                          MPI_ANY_SOURCE, entry.request->tag,
-                         device_p->comm_1sided, &entry.mpi_req));
+                         device_p->comm, &entry.mpi_req));
   device_p->pengine.put_entry = entry;
 }
 
@@ -110,17 +108,18 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
 {
   auto* device_p = new mpi::device_t;
   auto device = reinterpret_cast<device_t>(device_p);
-  MPI_SAFECALL(MPI_Comm_dup(MPI_COMM_WORLD, &device_p->comm_2sided));
+  MPI_SAFECALL(MPI_Comm_dup(MPI_COMM_WORLD, &device_p->comm));
   // get max tag
-  device_p->max_tag = 32767;
+  int max_tag = 32767;
   void* max_tag_p;
   int flag;
-  MPI_Comm_get_attr(device_p->comm_2sided, MPI_TAG_UB, &max_tag_p, &flag);
-  if (flag) device_p->max_tag = *(int*)max_tag_p;
+  MPI_Comm_get_attr(device_p->comm, MPI_TAG_UB, &max_tag_p, &flag);
+  if (flag) max_tag = *(int*)max_tag_p;
+  device_p->max_tag_2sided = max_tag - 1;
+  device_p->put_tag = max_tag;
   // 1sided
   if (max_put_length > 0) {
     device_p->put_rbuf.resize(max_put_length);
-    MPI_SAFECALL(MPI_Comm_dup(MPI_COMM_WORLD, &device_p->comm_1sided));
     post_put_recv(device, put_comp);
   } else {
     device_p->pengine.put_entry.mpi_req = MPI_REQUEST_NULL;
@@ -131,10 +130,7 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
 void backend_mpi_t::free_device(device_t device)
 {
   auto* device_p = reinterpret_cast<mpi::device_t*>(device);
-  MPI_Comm_free(&device_p->comm_2sided);
-  if (!device_p->put_rbuf.empty()) {
-    MPI_Comm_free(&device_p->comm_1sided);
-  }
+  MPI_SAFECALL(MPI_Comm_free(&device_p->comm));
   delete device_p;
 }
 
@@ -244,7 +240,7 @@ bool backend_mpi_t::send(device_t device, rank_t rank, tag_t tag, void* buf,
                                      .user_context = user_context,
                                  }};
   MPI_SAFECALL(MPI_Isend(buf, length, MPI_CHAR, rank, tag,
-                         device_p->comm_2sided, &entry.mpi_req));
+                         device_p->comm, &entry.mpi_req));
   add_to_progress_engine(device_p, entry);
   return true;
 }
@@ -265,7 +261,7 @@ bool backend_mpi_t::recv(device_t device, rank_t rank, tag_t tag, void* buf,
                                      .user_context = user_context,
                                  }};
   MPI_SAFECALL(MPI_Irecv(buf, length, MPI_CHAR, rank, tag,
-                         device_p->comm_2sided, &entry.mpi_req));
+                         device_p->comm, &entry.mpi_req));
   add_to_progress_engine(device_p, entry);
   return true;
 }
@@ -280,14 +276,14 @@ bool backend_mpi_t::put(device_t device, rank_t rank, void* buf, int64_t length,
                                      .op = op_t::PUT,
                                      .device = device,
                                      .rank = rank,
-                                     .tag = mpi::PUT_SIGNAL_TAG,
+                                     .tag = device_p->put_tag,
                                      .buffer = buf,
                                      .length = length,
                                      .user_context = user_context,
                                  }};
   MPI_SAFECALL(MPI_Isend(entry.request->buffer, entry.request->length, MPI_CHAR,
                          entry.request->rank, entry.request->tag,
-                         device_p->comm_1sided, &entry.mpi_req));
+                         device_p->comm, &entry.mpi_req));
   add_to_progress_engine(device_p, entry);
   return true;
 }
@@ -295,7 +291,7 @@ bool backend_mpi_t::put(device_t device, rank_t rank, void* buf, int64_t length,
 tag_t backend_mpi_t::get_max_tag(device_t device)
 {
   auto* device_p = reinterpret_cast<mpi::device_t*>(device);
-  return device_p->max_tag;
+  return device_p->max_tag_2sided;
 }
 
 }  // namespace lcw
