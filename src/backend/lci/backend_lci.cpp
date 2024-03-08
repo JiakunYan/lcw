@@ -5,10 +5,7 @@
 
 namespace lcw
 {
-void backend_lci_t::initialize()
-{
-  LCI_SAFECALL(LCI_initialize());
-}
+void backend_lci_t::initialize() { LCI_SAFECALL(LCI_initialize()); }
 
 void backend_lci_t::finalize() { LCI_SAFECALL(LCI_finalize()); }
 

@@ -79,8 +79,8 @@ void worker_thread_fn(int thread_id)
         // The sender
         // First post a recv
         if (config.op == lcw::op_t::SEND) {
-          while (!lcw::recv(device.device, peer_rank, tag, recv_buffer, msg_size, rcq,
-                            reinterpret_cast<void*>(i))) {
+          while (!lcw::recv(device.device, peer_rank, tag, recv_buffer,
+                            msg_size, rcq, reinterpret_cast<void*>(i))) {
             if (need_progress) lcw::do_progress(device.device);
           }
         }
@@ -88,8 +88,8 @@ void worker_thread_fn(int thread_id)
         while (true) {
           bool ret;
           if (config.op == lcw::op_t::SEND)
-            ret = lcw::send(device.device, peer_rank, tag, send_buffer, msg_size, scq,
-                            reinterpret_cast<void*>(i));
+            ret = lcw::send(device.device, peer_rank, tag, send_buffer,
+                            msg_size, scq, reinterpret_cast<void*>(i));
           else
             ret = lcw::put(device.device, peer_rank, send_buffer, msg_size, scq,
                            reinterpret_cast<void*>(i));
@@ -116,7 +116,8 @@ void worker_thread_fn(int thread_id)
           if (need_progress) lcw::do_progress(device.device);
         }
         if (config.test_mode) {
-          assert(rreq.device == device.device || rreq.op == lcw::op_t::PUT_SIGNAL);
+          assert(rreq.device == device.device ||
+                 rreq.op == lcw::op_t::PUT_SIGNAL);
           assert(rreq.length == msg_size);
           assert(rreq.op == ((config.op == lcw::op_t::SEND)
                                  ? lcw::op_t::RECV
@@ -136,8 +137,8 @@ void worker_thread_fn(int thread_id)
         // The receiver
         // first recv
         if (config.op == lcw::op_t::SEND) {
-          while (!lcw::recv(device.device, peer_rank, tag, recv_buffer, msg_size, rcq,
-                            reinterpret_cast<void*>(i))) {
+          while (!lcw::recv(device.device, peer_rank, tag, recv_buffer,
+                            msg_size, rcq, reinterpret_cast<void*>(i))) {
             if (need_progress) lcw::do_progress(device.device);
           }
         }
@@ -166,8 +167,8 @@ void worker_thread_fn(int thread_id)
         while (true) {
           bool ret;
           if (config.op == lcw::op_t::SEND)
-            ret = lcw::send(device.device, peer_rank, tag, send_buffer, msg_size, scq,
-                            reinterpret_cast<void*>(i));
+            ret = lcw::send(device.device, peer_rank, tag, send_buffer,
+                            msg_size, scq, reinterpret_cast<void*>(i));
           else
             ret = lcw::put(device.device, peer_rank, send_buffer, msg_size, scq,
                            reinterpret_cast<void*>(i));
@@ -297,7 +298,7 @@ int main(int argc, char* argv[])
       t.join();
     }
   }
-  for (auto &device : devices) {
+  for (auto& device : devices) {
     lcw::free_device(device.device);
     lcw::free_cq(device.put_cq);
   }

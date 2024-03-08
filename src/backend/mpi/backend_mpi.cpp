@@ -99,8 +99,8 @@ void post_put_recv(device_t device, comp_t completion)
           .user_context = nullptr,
       }};
   MPI_SAFECALL(MPI_Irecv(entry.request->buffer, entry.request->length, MPI_CHAR,
-                         MPI_ANY_SOURCE, entry.request->tag,
-                         device_p->comm, &entry.mpi_req));
+                         MPI_ANY_SOURCE, entry.request->tag, device_p->comm,
+                         &entry.mpi_req));
   device_p->pengine.put_entry = entry;
 }
 
@@ -239,8 +239,8 @@ bool backend_mpi_t::send(device_t device, rank_t rank, tag_t tag, void* buf,
                                      .length = length,
                                      .user_context = user_context,
                                  }};
-  MPI_SAFECALL(MPI_Isend(buf, length, MPI_CHAR, rank, tag,
-                         device_p->comm, &entry.mpi_req));
+  MPI_SAFECALL(MPI_Isend(buf, length, MPI_CHAR, rank, tag, device_p->comm,
+                         &entry.mpi_req));
   add_to_progress_engine(device_p, entry);
   return true;
 }
@@ -260,8 +260,8 @@ bool backend_mpi_t::recv(device_t device, rank_t rank, tag_t tag, void* buf,
                                      .length = length,
                                      .user_context = user_context,
                                  }};
-  MPI_SAFECALL(MPI_Irecv(buf, length, MPI_CHAR, rank, tag,
-                         device_p->comm, &entry.mpi_req));
+  MPI_SAFECALL(MPI_Irecv(buf, length, MPI_CHAR, rank, tag, device_p->comm,
+                         &entry.mpi_req));
   add_to_progress_engine(device_p, entry);
   return true;
 }

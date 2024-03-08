@@ -23,3 +23,5 @@ find_package(
   lib/cmake
   lib64/cmake)
 target_link_libraries(pingpong_mt PRIVATE LCI::LCT)
+
+add_subdirectory(mpi)
