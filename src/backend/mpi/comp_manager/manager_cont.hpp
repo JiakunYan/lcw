@@ -1,0 +1,35 @@
+#ifndef LCW_MANAGER_CONT_HPP
+#define LCW_MANAGER_CONT_HPP
+
+#include <mpi.h>
+#ifdef MPIX_CONT_POLL_ONLY
+#define LCW_COMP_MANAGER_CONT_ENABLED
+
+#include "lcwi.hpp"
+#include "manager_base.hpp"
+
+namespace lcw
+{
+namespace mpi
+{
+namespace comp
+{
+struct manager_cont_t : public manager_base_t {
+  manager_cont_t()
+  {
+    MPIX_Continue_init(0, 0, MPI_INFO_NULL, &cont_req);
+    MPI_Start(&cont_req);
+  }
+  ~manager_cont_t() { MPI_Request_free(&cont_req); }
+  void add_entry(entry_t entry) override;
+  bool do_progress() override;
+  MPI_Request cont_req;
+  std::deque<entry_t> entries;
+  spinlock_t lock;
+};
+}  // namespace comp
+}  // namespace mpi
+}  // namespace lcw
+#endif  // MPIX_CONT_POLL_ONLY
+
+#endif  // LCW_MANAGER_CONT_HPP

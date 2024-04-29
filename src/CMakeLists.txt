@@ -35,7 +35,11 @@ if(LCW_TRY_ENABLE_BACKEND_MPI)
   if(MPI_FOUND)
     set(LCW_ENABLE_BACKEND_MPI ON)
     target_link_libraries(lcw PRIVATE MPI::MPI_CXX)
-    target_sources(lcw PRIVATE backend/mpi/backend_mpi.cpp)
+    target_sources(
+      lcw
+      PRIVATE backend/mpi/backend_mpi.cpp
+              backend/mpi/comp_manager/manager_req.cpp
+              backend/mpi/comp_manager/manager_cont.cpp)
   else()
     message(WARNING "MPI is not found. The MPI backend if not enabled.")
   endif()
