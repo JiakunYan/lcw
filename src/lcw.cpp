@@ -14,6 +14,7 @@ void initialize(backend_t backend)
   }
   LCT_init();
   LCWI_log_init();
+  custom_spinlock_init();
   init_env();
   backend_p = alloc_backend(backend);
   LCW_Log(LCW_LOG_TRACE, "init", "Start initializing\n");

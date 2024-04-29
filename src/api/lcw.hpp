@@ -7,6 +7,7 @@
  */
 
 #include <cstdint>
+#include <string>
 #include "lcw_config.hpp"
 #define LCW_API __attribute__((visibility("default")))
 
@@ -195,8 +196,22 @@ LCW_API bool recv(device_t device, rank_t rank, tag_t tag, void* buf,
 LCW_API bool put(device_t device, rank_t rank, void* buf, int64_t length,
                  comp_t completion, void* user_context);
 
+/**
+ * @ingroup LCW_COMM
+ * @brief get the maximum tag that can be used for send/recv
+ */
 LCW_API tag_t get_max_tag(device_t device);
 
+// Custom spinlock
+struct custom_spinlock_op_t {
+  std::string name = "Unknown";
+  void* (*alloc)() = nullptr;
+  void (*free)(void*) = nullptr;
+  void (*lock)(void*) = nullptr;
+  bool (*trylock)(void*) = nullptr;
+  void (*unlock)(void*) = nullptr;
+};
+LCW_API void custom_spinlock_setup(custom_spinlock_op_t op);
 }  // namespace lcw
 
 #endif  // LCW_LCW_HPP

@@ -3,21 +3,25 @@
 
 namespace lcw
 {
+extern custom_spinlock_op_t spinlock_op;
+
+void custom_spinlock_init();
+
 class spinlock_t
 {
  public:
-  spinlock_t() { pthread_spin_init(&l, PTHREAD_PROCESS_PRIVATE); }
+  spinlock_t() { l = spinlock_op.alloc(); }
 
-  ~spinlock_t() { pthread_spin_destroy(&l); }
+  ~spinlock_t() { spinlock_op.free(l); }
 
-  bool try_lock() { return pthread_spin_trylock(&l) == 0; }
+  bool try_lock() { return spinlock_op.trylock(l); }
 
-  void lock() { pthread_spin_lock(&l); }
+  void lock() { spinlock_op.lock(l); }
 
-  void unlock() { pthread_spin_unlock(&l); }
+  void unlock() { spinlock_op.unlock(l); }
 
  private:
-  pthread_spinlock_t l;
+  void* l;
 };
 }  // namespace lcw
 
