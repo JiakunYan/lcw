@@ -1,9 +1,6 @@
 #include <vector>
 #include <cstring>
-#include <mpi.h>
 #include "lcwi.hpp"
-#include "comp_manager/manager_req.hpp"
-#include "comp_manager/manager_cont.hpp"
 
 namespace lcw
 {
@@ -11,20 +8,7 @@ namespace mpi
 {
 int g_rank = -1;
 int g_nranks = -1;
-
-struct config_t {
-  LCT_queue_type_t cq_type = LCT_QUEUE_ARRAY_ATOMIC_FAA;
-  int default_cq_length = 65536;
-  enum class comp_type_t {
-    REQUEST,
-    CONTINUE,
-  } comp_type =
-#ifdef LCW_COMP_MANAGER_CONT_ENABLED
-      comp_type_t::CONTINUE;
-#else
-      comp_type_t::REQUEST;
-#endif
-} config;
+config_t config;
 }  // namespace mpi
 
 void backend_mpi_t::initialize()
@@ -85,6 +69,19 @@ void backend_mpi_t::initialize()
     LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_COMP_TYPE to %d\n",
             mpi::config.comp_type);
   }
+
+  // Use Stream
+  {
+    char* p = getenv("LCW_MPI_USE_STREAM");
+    if (p) {
+      mpi::config.use_stream = atoi(p);
+    }
+#ifndef LCW_MPI_USE_STREAM
+    LCW_Assert(!mpi::config.use_stream, "MPIX Stream is not enabled!\n");
+#endif
+    LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_USE_STREAM to %d\n",
+            mpi::config.default_cq_length);
+  }
 }
 
 void backend_mpi_t::finalize() { MPI_SAFECALL(MPI_Finalize()); }
@@ -93,34 +90,12 @@ int64_t backend_mpi_t::get_rank() { return mpi::g_rank; }
 
 int64_t backend_mpi_t::get_nranks() { return mpi::g_nranks; }
 
-namespace mpi
-{
-struct progress_entry_t {
-  MPI_Request mpi_req;
-  comp_t completion;
-  request_t* request;
-};
-
-struct progress_engine_t {
-  progress_entry_t put_entry;
-  spinlock_t put_entry_lock;
-  std::unique_ptr<comp::manager_base_t> comp_manager_p;
-};
-
-struct device_t {
-  MPI_Comm comm;
-  std::vector<char> put_rbuf;
-  tag_t max_tag_2sided;
-  tag_t put_tag;
-  progress_engine_t pengine;
-};
-}  // namespace mpi
-
 void post_put_recv(device_t device, comp_t completion)
 {
   auto* device_p = reinterpret_cast<mpi::device_t*>(device);
-  mpi::progress_entry_t entry = {
+  mpi::comp::entry_t entry = {
       .mpi_req = MPI_REQUEST_NULL,
+      .device = device,
       .completion = completion,
       .request = new request_t{
           .op = op_t::PUT_SIGNAL,
@@ -131,9 +106,11 @@ void post_put_recv(device_t device, comp_t completion)
           .length = static_cast<int64_t>(device_p->put_rbuf.size()),
           .user_context = nullptr,
       }};
+  mpi::enter_stream_cs(device);
   MPI_SAFECALL(MPI_Irecv(entry.request->buffer, entry.request->length, MPI_CHAR,
                          MPI_ANY_SOURCE, entry.request->tag, device_p->comm,
                          &entry.mpi_req));
+  mpi::leave_stream_cs(device);
   device_p->pengine.put_entry = entry;
 }
 
@@ -141,7 +118,15 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
 {
   auto* device_p = new mpi::device_t;
   auto device = reinterpret_cast<device_t>(device_p);
-  MPI_SAFECALL(MPI_Comm_dup(MPI_COMM_WORLD, &device_p->comm));
+  if (mpi::config.use_stream) {
+#ifdef LCW_MPI_USE_STREAM
+    MPI_SAFECALL(MPIX_Stream_create(MPI_INFO_NULL, &device_p->stream));
+    MPI_SAFECALL(MPIX_Stream_comm_create(MPI_COMM_WORLD, device_p->stream,
+                                         &device_p->comm));
+#endif
+  } else {
+    MPI_SAFECALL(MPI_Comm_dup(MPI_COMM_WORLD, &device_p->comm));
+  }
   // get max tag
   int max_tag = 32767;
   void* max_tag_p;
@@ -155,20 +140,22 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
       device_p->pengine.comp_manager_p =
           std::make_unique<mpi::comp::manager_req_t>();
       break;
-#ifdef LCW_COMP_MANAGER_CONT_ENABLED
     case mpi::config_t::comp_type_t::CONTINUE:
+#ifdef LCW_MPI_USE_CONT
       device_p->pengine.comp_manager_p =
           std::make_unique<mpi::comp::manager_cont_t>();
-      break;
+#else
+      LCW_Assert(false, "comp_type cont is not enabled!\n");
 #endif
+      break;
   }
   // 1sided
   if (max_put_length > 0) {
     device_p->put_rbuf.resize(max_put_length);
-    post_put_recv(device, put_comp);
   } else {
-    device_p->pengine.put_entry.mpi_req = MPI_REQUEST_NULL;
+    device_p->put_rbuf.resize(mpi::config.default_max_put);
   }
+  post_put_recv(device, put_comp);
   return device;
 }
 
@@ -176,6 +163,11 @@ void backend_mpi_t::free_device(device_t device)
 {
   auto* device_p = reinterpret_cast<mpi::device_t*>(device);
   MPI_SAFECALL(MPI_Comm_free(&device_p->comm));
+#ifdef LCW_MPI_USE_STREAM
+  if (mpi::config.use_stream) {
+    MPI_SAFECALL(MPIX_Stream_free(&device_p->stream));
+  }
+#endif
   delete device_p;
 }
 
@@ -186,12 +178,14 @@ bool backend_mpi_t::do_progress(device_t device)
   bool made_progress = false;
   int succeed = 0;
   MPI_Status status;
-  mpi::progress_entry_t entry;
+  mpi::comp::entry_t entry;
   if (device_p->pengine.put_entry.mpi_req != MPI_REQUEST_NULL &&
       device_p->pengine.put_entry_lock.try_lock()) {
     if (device_p->pengine.put_entry.mpi_req != MPI_REQUEST_NULL) {
+      mpi::enter_stream_cs(device);
       MPI_SAFECALL(
           MPI_Test(&device_p->pengine.put_entry.mpi_req, &succeed, &status));
+      mpi::leave_stream_cs(device);
       if (succeed) {
         entry = device_p->pengine.put_entry;
         int count;
@@ -250,6 +244,7 @@ bool backend_mpi_t::send(device_t device, rank_t rank, tag_t tag, void* buf,
 {
   auto* device_p = reinterpret_cast<mpi::device_t*>(device);
   mpi::comp::entry_t entry = {.mpi_req = MPI_REQUEST_NULL,
+                              .device = device,
                               .completion = completion,
                               .request = new request_t{
                                   .op = op_t::SEND,
@@ -260,8 +255,10 @@ bool backend_mpi_t::send(device_t device, rank_t rank, tag_t tag, void* buf,
                                   .length = length,
                                   .user_context = user_context,
                               }};
+  mpi::enter_stream_cs(device);
   MPI_SAFECALL(MPI_Isend(buf, length, MPI_CHAR, rank, tag, device_p->comm,
                          &entry.mpi_req));
+  mpi::leave_stream_cs(device);
   device_p->pengine.comp_manager_p->add_entry(entry);
   return true;
 }
@@ -271,6 +268,7 @@ bool backend_mpi_t::recv(device_t device, rank_t rank, tag_t tag, void* buf,
 {
   auto* device_p = reinterpret_cast<mpi::device_t*>(device);
   mpi::comp::entry_t entry = {.mpi_req = MPI_REQUEST_NULL,
+                              .device = device,
                               .completion = completion,
                               .request = new request_t{
                                   .op = op_t::RECV,
@@ -281,8 +279,10 @@ bool backend_mpi_t::recv(device_t device, rank_t rank, tag_t tag, void* buf,
                                   .length = length,
                                   .user_context = user_context,
                               }};
+  mpi::enter_stream_cs(device);
   MPI_SAFECALL(MPI_Irecv(buf, length, MPI_CHAR, rank, tag, device_p->comm,
                          &entry.mpi_req));
+  mpi::leave_stream_cs(device);
   device_p->pengine.comp_manager_p->add_entry(entry);
   return true;
 }
@@ -292,6 +292,7 @@ bool backend_mpi_t::put(device_t device, rank_t rank, void* buf, int64_t length,
 {
   auto* device_p = reinterpret_cast<mpi::device_t*>(device);
   mpi::comp::entry_t entry = {.mpi_req = MPI_REQUEST_NULL,
+                              .device = device,
                               .completion = completion,
                               .request = new request_t{
                                   .op = op_t::PUT,
@@ -302,9 +303,11 @@ bool backend_mpi_t::put(device_t device, rank_t rank, void* buf, int64_t length,
                                   .length = length,
                                   .user_context = user_context,
                               }};
+  mpi::enter_stream_cs(device);
   MPI_SAFECALL(MPI_Isend(entry.request->buffer, entry.request->length, MPI_CHAR,
                          entry.request->rank, entry.request->tag,
                          device_p->comm, &entry.mpi_req));
+  mpi::leave_stream_cs(device);
   device_p->pengine.comp_manager_p->add_entry(entry);
   return true;
 }

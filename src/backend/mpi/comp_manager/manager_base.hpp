@@ -12,6 +12,7 @@ namespace comp
 {
 struct entry_t {
   MPI_Request mpi_req;
+  device_t device;
   comp_t completion;
   request_t* request;
 };

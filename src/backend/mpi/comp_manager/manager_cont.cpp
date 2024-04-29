@@ -1,7 +1,6 @@
-#include "manager_cont.hpp"
-#include "backend/mpi/backend_mpi.hpp"
+#include "lcwi.hpp"
 
-#ifdef LCW_COMP_MANAGER_CONT_ENABLED
+#ifdef LCW_MPI_USE_CONT
 
 namespace lcw
 {
@@ -25,20 +24,16 @@ void manager_cont_t::add_entry(entry_t entry)
 {
   auto entry_p = new entry_t(entry);
   LCW_Log(LCW_LOG_TRACE, "comp", "Attach continuation %p\n", entry.mpi_req);
-  MPI_SAFECALL(MPIX_Continue(&entry.mpi_req, &complete_cb, entry_p,
-                             MPIX_CONT_IMMEDIATE | MPIX_CONT_FORGET,
+  int flag = MPIX_CONT_IMMEDIATE | MPIX_CONT_FORGET;
+  mpi::enter_stream_cs(entry.device);
+  MPI_SAFECALL(MPIX_Continue(&entry.mpi_req, &complete_cb, entry_p, flag,
                              MPI_STATUS_IGNORE, cont_req));
+  mpi::leave_stream_cs(entry.device);
 }
 
-bool manager_cont_t::do_progress()
-{
-#ifdef MPIX_STREAM_NULL
-  MPI_SAFECALL(MPIX_Stream_progress(MPIX_STREAM_NULL));
-#endif
-  return false;
-}
+bool manager_cont_t::do_progress() { return false; }
 }  // namespace comp
 }  // namespace mpi
 }  // namespace lcw
 
-#endif  // LCW_COMP_MANAGER_CONT_ENABLED
+#endif  // LCW_MPI_USE_CONT

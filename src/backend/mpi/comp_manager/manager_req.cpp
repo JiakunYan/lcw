@@ -1,4 +1,4 @@
-#include "manager_req.hpp"
+#include "lcwi.hpp"
 
 namespace lcw
 {
@@ -29,7 +29,9 @@ bool manager_req_t::do_progress()
   if (entry.mpi_req == MPI_REQUEST_NULL)
     succeed = 1;
   else {
+    mpi::enter_stream_cs(entry.device);
     MPI_SAFECALL(MPI_Test(&entry.mpi_req, &succeed, &status));
+    mpi::leave_stream_cs(entry.device);
   }
   if (!succeed) {
     entries.push_back(entry);

@@ -6,6 +6,7 @@
 #include <string>
 #include <memory>
 #include <deque>
+#include <vector>
 #include <pthread.h>
 #include "lct.h"
 
@@ -17,7 +18,10 @@
 #include "backend/lci/backend_lci.hpp"
 #endif
 #ifdef LCW_ENABLE_BACKEND_MPI
+#include "backend/mpi/comp_manager/manager_base.hpp"
 #include "backend/mpi/backend_mpi.hpp"
+#include "backend/mpi/comp_manager/manager_req.hpp"
+#include "backend/mpi/comp_manager/manager_cont.hpp"
 #endif
 
 #endif  // LCW_LCWI_HPP

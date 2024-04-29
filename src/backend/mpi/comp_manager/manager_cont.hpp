@@ -1,11 +1,9 @@
 #ifndef LCW_MANAGER_CONT_HPP
 #define LCW_MANAGER_CONT_HPP
 
-#include <mpi.h>
-#ifdef MPIX_CONT_POLL_ONLY
-#define LCW_COMP_MANAGER_CONT_ENABLED
-
 #include "lcwi.hpp"
+
+#ifdef LCW_MPI_USE_CONT
 #include "manager_base.hpp"
 
 namespace lcw
@@ -30,6 +28,6 @@ struct manager_cont_t : public manager_base_t {
 }  // namespace comp
 }  // namespace mpi
 }  // namespace lcw
-#endif  // MPIX_CONT_POLL_ONLY
+#endif  // LCW_MPI_USE_CONT
 
 #endif  // LCW_MANAGER_CONT_HPP
