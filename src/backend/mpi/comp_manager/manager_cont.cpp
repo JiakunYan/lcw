@@ -14,8 +14,7 @@ static int complete_cb(int status, void* user_data)
   LCW_Assert(status == MPI_SUCCESS, "");
   auto* entry_p = static_cast<entry_t*>(user_data);
   LCW_Log(LCW_LOG_TRACE, "comp", "Invoke continuation %p\n", entry_p->mpi_req);
-  auto cq = reinterpret_cast<LCT_queue_t>(entry_p->completion);
-  LCT_queue_push(cq, entry_p->request);
+  push_cq(*entry_p);
   delete entry_p;
   return MPI_SUCCESS;
 }

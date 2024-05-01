@@ -24,6 +24,8 @@ class Lcw(CMakePackage):
     variant('cache-line', default='auto', values=is_positive_int,
             description='Cache line size, in bytes')
     variant('debug', default=False, description='Enable debug mode')
+    variant('pcounter', default=False,
+            description='Use performance counter')
 
     depends_on("mpi", when="backend=mpi")
     depends_on("lci")
@@ -33,6 +35,7 @@ class Lcw(CMakePackage):
             self.define_from_variant('BUILD_SHARED_LIBS', 'shared'),
             self.define_from_variant('LCW_WITH_EXAMPLES', 'examples'),
             self.define_from_variant('LCW_DEBUG', 'debug'),
+            self.define_from_variant('LCW_ENABLE_PCOUNTER', 'pcounter'),
         ]
 
         if self.spec.satisfies("backend=mpi"):

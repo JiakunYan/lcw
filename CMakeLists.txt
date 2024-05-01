@@ -30,6 +30,7 @@ option(LCW_DEBUG "Enable debugging build" OFF)
 set(LCW_CACHE_LINE
     64
     CACHE STRING "Size of cache line (bytes)")
+option(LCW_ENABLE_PCOUNTER "Enable performance counters" OFF)
 
 # ##############################################################################
 # Add subdirectories

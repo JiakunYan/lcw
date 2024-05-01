@@ -93,6 +93,27 @@ static inline void leave_stream_cs(lcw::device_t device)
     device_p->stream_lock.unlock();
   }
 }
+
+static void push_cq(const comp::entry_t& entry)
+{
+  auto cq = reinterpret_cast<LCT_queue_t>(entry.completion);
+  switch (entry.request->op) {
+    case op_t::SEND:
+      pcounter_add(send_end);
+      break;
+    case op_t::RECV:
+      pcounter_add(recv_end);
+      break;
+    case op_t::PUT:
+      pcounter_add(put_end);
+      break;
+    case op_t::PUT_SIGNAL:
+      pcounter_add(put_signal);
+      break;
+  }
+  pcounter_add(comp_produce);
+  LCT_queue_push(cq, entry.request);
+}
 }  // namespace mpi
 }  // namespace lcw
 

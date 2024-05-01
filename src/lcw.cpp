@@ -16,6 +16,7 @@ void initialize(backend_t backend)
   LCWI_log_init();
   custom_spinlock_init();
   init_env();
+  init_pcounter();
   backend_p = alloc_backend(backend);
   LCW_Log(LCW_LOG_TRACE, "init", "Start initializing\n");
   backend_p->initialize();
@@ -29,6 +30,7 @@ void finalize()
              "LCW has not been initialized or has been finalized!\n");
   backend_p->finalize();
   backend_p.reset(nullptr);
+  free_pcounter();
   LCWI_log_fina();
   LCT_fina();
 }
@@ -67,6 +69,7 @@ bool do_progress(device_t device)
 {
   LCW_Assert(backend_p != nullptr,
              "LCW has not been initialized or has been finalized!\n");
+  pcounter_add(progress);
   return backend_p->do_progress(device);
 }
 
@@ -88,12 +91,14 @@ bool poll_cq(comp_t completion, request_t* request)
 {
   LCW_Assert(backend_p != nullptr,
              "LCW has not been initialized or has been finalized!\n");
+  pcounter_add(comp_poll);
   bool ret = backend_p->poll_cq(completion, request);
   if (ret) {
     LCW_Log(LCW_log_level_t::LCW_LOG_TRACE, "comm",
             "poll_cq(%p, {%p, %ld, %ld, %p, %ld, %p})\n", completion,
             request->device, request->rank, request->tag, request->buffer,
             request->length, request->user_context);
+    pcounter_add(comp_consume);
   }
   return ret;
 }
@@ -106,8 +111,14 @@ bool send(device_t device, rank_t rank, tag_t tag, void* buf, int64_t length,
   LCW_Log(LCW_log_level_t::LCW_LOG_TRACE, "comm",
           "send(%p, %ld, %ld, %p, %ld, %p, %p)\n", device, rank, tag, buf,
           length, completion, user_context);
-  return backend_p->send(device, rank, tag, buf, length, completion,
-                         user_context);
+  bool ret =
+      backend_p->send(device, rank, tag, buf, length, completion, user_context);
+  if (ret) {
+    pcounter_add(send_start);
+  } else {
+    pcounter_add(send_retry);
+  }
+  return ret;
 }
 
 bool recv(device_t device, rank_t rank, tag_t tag, void* buf, int64_t length,
@@ -118,8 +129,14 @@ bool recv(device_t device, rank_t rank, tag_t tag, void* buf, int64_t length,
   LCW_Log(LCW_log_level_t::LCW_LOG_TRACE, "comm",
           "recv(%p, %ld, %ld, %p, %ld, %p, %p)\n", device, rank, tag, buf,
           length, completion, user_context);
-  return backend_p->recv(device, rank, tag, buf, length, completion,
-                         user_context);
+  bool ret =
+      backend_p->recv(device, rank, tag, buf, length, completion, user_context);
+  if (ret) {
+    pcounter_add(recv_start);
+  } else {
+    pcounter_add(recv_retry);
+  }
+  return ret;
 }
 
 bool put(device_t device, rank_t rank, void* buf, int64_t length,
@@ -130,7 +147,14 @@ bool put(device_t device, rank_t rank, void* buf, int64_t length,
   LCW_Log(LCW_log_level_t::LCW_LOG_TRACE, "comm",
           "put(%p, %ld, %p, %ld, %p, %p)\n", device, rank, buf, length,
           completion, user_context);
-  return backend_p->put(device, rank, buf, length, completion, user_context);
+  bool ret =
+      backend_p->put(device, rank, buf, length, completion, user_context);
+  if (ret) {
+    pcounter_add(put_start);
+  } else {
+    pcounter_add(put_retry);
+  }
+  return ret;
 }
 
 tag_t get_max_tag(device_t device)

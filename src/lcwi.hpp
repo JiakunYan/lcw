@@ -12,6 +12,7 @@
 
 #include "api/lcw.hpp"
 #include "env.hpp"
+#include "util/pcounter.hpp"
 #include "util/spinlock.hpp"
 #include "logger/logger.hpp"
 #include "backend/backend.hpp"

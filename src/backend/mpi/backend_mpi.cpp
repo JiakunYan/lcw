@@ -207,8 +207,7 @@ bool backend_mpi_t::do_progress(device_t device)
     }
     device_p->pengine.put_entry_lock.unlock();
     if (succeed) {
-      auto cq = reinterpret_cast<LCT_queue_t>(entry.completion);
-      LCT_queue_push(cq, entry.request);
+      mpi::push_cq(entry);
     }
   }
   made_progress = succeed || made_progress;
