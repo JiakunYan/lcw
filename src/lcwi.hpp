@@ -11,6 +11,7 @@
 #include "lct.h"
 
 #include "api/lcw.hpp"
+#include "env.hpp"
 #include "util/spinlock.hpp"
 #include "logger/logger.hpp"
 #include "backend/backend.hpp"

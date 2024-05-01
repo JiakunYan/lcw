@@ -53,7 +53,7 @@ void custom_spinlock_setup(custom_spinlock_op_t op)
 
 void custom_spinlock_init()
 {
-  if (!setuped) {
+  if (!setuped || config.force_default_spinlock) {
     spinlock_op.name = "pthread";
     spinlock_op.alloc = detail::spinlock_pthread_alloc;
     spinlock_op.free = detail::spinlock_pthread_free;
