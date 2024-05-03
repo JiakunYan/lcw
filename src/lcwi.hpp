@@ -8,6 +8,7 @@
 #include <deque>
 #include <vector>
 #include <pthread.h>
+#include <atomic>
 #include "lct.h"
 
 #include "api/lcw.hpp"

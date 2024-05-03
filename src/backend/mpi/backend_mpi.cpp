@@ -8,6 +8,7 @@ namespace mpi
 {
 int g_rank = -1;
 int g_nranks = -1;
+std::atomic<int> g_pending_msg(0);
 config_t config;
 }  // namespace mpi
 
@@ -80,7 +81,17 @@ void backend_mpi_t::initialize()
     LCW_Assert(!mpi::config.use_stream, "MPIX Stream is not enabled!\n");
 #endif
     LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_USE_STREAM to %d\n",
-            mpi::config.default_cq_length);
+            mpi::config.use_stream);
+  }
+
+  // Use Stream
+  {
+    char* p = getenv("LCW_MPI_MAX_PENDING_MSG");
+    if (p) {
+      mpi::config.g_pending_msg_max = atoi(p);
+    }
+    LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_MAX_PENDING_MSG to %d\n",
+            mpi::config.g_pending_msg_max);
   }
 }
 
@@ -241,6 +252,14 @@ bool backend_mpi_t::poll_cq(comp_t completion, request_t* request)
 bool backend_mpi_t::send(device_t device, rank_t rank, tag_t tag, void* buf,
                          int64_t length, comp_t completion, void* user_context)
 {
+  if (mpi::config.g_pending_msg_max > 0) {
+    if (mpi::g_pending_msg.load(std::memory_order_relaxed) >
+        mpi::config.g_pending_msg_max) {
+      return false;
+    } else {
+      mpi::g_pending_msg.fetch_add(1, std::memory_order::memory_order_relaxed);
+    }
+  }
   auto* device_p = reinterpret_cast<mpi::device_t*>(device);
   mpi::comp::entry_t entry = {.mpi_req = MPI_REQUEST_NULL,
                               .device = device,
@@ -289,6 +308,14 @@ bool backend_mpi_t::recv(device_t device, rank_t rank, tag_t tag, void* buf,
 bool backend_mpi_t::put(device_t device, rank_t rank, void* buf, int64_t length,
                         comp_t completion, void* user_context)
 {
+  if (mpi::config.g_pending_msg_max > 0) {
+    if (mpi::g_pending_msg.load(std::memory_order_relaxed) >
+        mpi::config.g_pending_msg_max) {
+      return false;
+    } else {
+      mpi::g_pending_msg.fetch_add(1, std::memory_order::memory_order_relaxed);
+    }
+  }
   auto* device_p = reinterpret_cast<mpi::device_t*>(device);
   mpi::comp::entry_t entry = {.mpi_req = MPI_REQUEST_NULL,
                               .device = device,

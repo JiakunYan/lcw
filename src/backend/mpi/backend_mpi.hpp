@@ -57,8 +57,10 @@ struct config_t {
       comp_type_t::REQUEST;
 #endif
   bool use_stream = false;
+  int g_pending_msg_max = 256;
 };
 extern config_t config;
+extern std::atomic<int> g_pending_msg;
 
 struct progress_engine_t {
   comp::entry_t put_entry;
@@ -80,18 +82,22 @@ struct device_t {
 
 static inline void enter_stream_cs(lcw::device_t device)
 {
+#ifdef LCW_MPI_USE_STREAM
   if (config.use_stream) {
     auto* device_p = reinterpret_cast<mpi::device_t*>(device);
     device_p->stream_lock.lock();
   }
+#endif
 }
 
 static inline void leave_stream_cs(lcw::device_t device)
 {
+#ifdef LCW_MPI_USE_STREAM
   if (config.use_stream) {
     auto* device_p = reinterpret_cast<mpi::device_t*>(device);
     device_p->stream_lock.unlock();
   }
+#endif
 }
 
 static void push_cq(const comp::entry_t& entry)
@@ -99,12 +105,16 @@ static void push_cq(const comp::entry_t& entry)
   auto cq = reinterpret_cast<LCT_queue_t>(entry.completion);
   switch (entry.request->op) {
     case op_t::SEND:
+      if (config.g_pending_msg_max > 0)
+        g_pending_msg.fetch_sub(1, std::memory_order::memory_order_relaxed);
       pcounter_add(send_end);
       break;
     case op_t::RECV:
       pcounter_add(recv_end);
       break;
     case op_t::PUT:
+      if (config.g_pending_msg_max > 0)
+        g_pending_msg.fetch_sub(1, std::memory_order::memory_order_relaxed);
       pcounter_add(put_end);
       break;
     case op_t::PUT_SIGNAL:
