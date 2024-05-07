@@ -138,6 +138,13 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
   } else {
     MPI_SAFECALL(MPI_Comm_dup(MPI_COMM_WORLD, &device_p->comm));
   }
+#if MPI_VERSION >= 3
+  MPI_Info hints;
+  MPI_Info_create(&hints);
+  MPI_Info_set(hints, "mpi_assert_no_any_tag", "true");
+  MPI_Info_set(hints, "mpi_assert_allow_overtaking", "true");
+  MPI_Comm_set_info(device_p->comm, hints);
+#endif
   // get max tag
   int max_tag = 32767;
   void* max_tag_p;
