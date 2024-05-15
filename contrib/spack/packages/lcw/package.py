@@ -1,5 +1,4 @@
 from spack import *
-import os
 
 class Lcw(CMakePackage):
     """LCW: a Lightweight Communication Wrapper"""
