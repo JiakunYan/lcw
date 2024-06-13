@@ -16,11 +16,11 @@ void initialize(backend_t backend)
   LCWI_log_init();
   custom_spinlock_init();
   init_env();
-  init_pcounter();
   backend_p = alloc_backend(backend);
   LCW_Log(LCW_LOG_TRACE, "init", "Start initializing\n");
   backend_p->initialize();
   LCT_set_rank(static_cast<int>(get_rank()));
+  init_pcounter();
   LCW_Log(LCW_LOG_TRACE, "init", "Initialize successfully\n");
 }
 
