@@ -57,6 +57,9 @@ struct config_t {
       comp_type_t::REQUEST;
 #endif
   bool use_stream = false;
+#ifdef LCW_MPI_USE_CONT
+  uint64_t cont_flag = MPIX_CONT_IMMEDIATE | MPIX_CONT_FORGET;
+#endif
   int g_pending_msg_max = 256;
 };
 extern config_t config;

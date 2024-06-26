@@ -84,7 +84,7 @@ void backend_mpi_t::initialize()
             mpi::config.use_stream);
   }
 
-  // Use Stream
+  // Max Pending Messages
   {
     char* p = getenv("LCW_MPI_MAX_PENDING_MSG");
     if (p) {
@@ -93,6 +93,24 @@ void backend_mpi_t::initialize()
     LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_MAX_PENDING_MSG to %d\n",
             mpi::config.g_pending_msg_max);
   }
+
+#ifdef LCW_MPI_USE_CONT
+  {
+    // if users explicitly set the value
+    char* p = getenv("LCW_MPI_CONT_FLAG");
+    if (p) {
+      LCT_dict_str_int_t dict[] = {
+          {"none", 0},
+          {"imm", MPIX_CONT_IMMEDIATE},
+          {"forget", MPIX_CONT_FORGET},
+      };
+      mpi::config.cont_flag =
+          LCT_parse_arg(dict, sizeof(dict) / sizeof(dict[0]), p, ",");
+    }
+    LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_CONT_FLAG to %d\n",
+            mpi::config.cont_flag);
+  }
+#endif
 }
 
 void backend_mpi_t::finalize() { MPI_SAFECALL(MPI_Finalize()); }
