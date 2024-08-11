@@ -10,6 +10,8 @@ int g_rank = -1;
 int g_nranks = -1;
 std::atomic<int> g_pending_msg(0);
 config_t config;
+std::vector<std::shared_ptr<comp::manager_base_t>> g_comp_managers;
+std::atomic<int> g_ndevices(0);
 }  // namespace mpi
 
 void backend_mpi_t::initialize()
@@ -94,6 +96,16 @@ void backend_mpi_t::initialize()
             mpi::config.g_pending_msg_max);
   }
 
+  // Global completion manager number
+  {
+    char* p = getenv("LCW_MPI_NUM_COMP_MANAGERS");
+    if (p) {
+      mpi::config.g_num_comp_managers = atoi(p);
+    }
+    LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_NUM_COMP_MANAGERS to %d\n",
+            mpi::config.g_num_comp_managers);
+  }
+
 #ifdef LCW_MPI_USE_CONT
   {
     // if users explicitly set the value
@@ -111,6 +123,24 @@ void backend_mpi_t::initialize()
             mpi::config.cont_flag);
   }
 #endif
+
+  if (mpi::config.g_num_comp_managers) {
+    mpi::g_comp_managers.resize(mpi::config.g_num_comp_managers);
+    for (auto &p : mpi::g_comp_managers) {
+      switch (mpi::config.comp_type) {
+        case mpi::config_t::comp_type_t::REQUEST:
+          p = std::make_shared<mpi::comp::manager_req_t>();
+          break;
+        case mpi::config_t::comp_type_t::CONTINUE:
+#ifdef LCW_MPI_USE_CONT
+          p = std::make_shared<mpi::comp::manager_cont_t>();
+#else
+          LCW_Assert(false, "comp_type cont is not enabled!\n");
+#endif
+          break;
+      }
+    }
+  }
 }
 
 void backend_mpi_t::finalize() { MPI_SAFECALL(MPI_Finalize()); }
@@ -147,6 +177,7 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
 {
   auto* device_p = new mpi::device_t;
   auto device = reinterpret_cast<device_t>(device_p);
+  device_p->id = mpi::g_ndevices++;
   if (mpi::config.use_stream) {
 #ifdef LCW_MPI_USE_STREAM
     MPI_SAFECALL(MPIX_Stream_create(MPI_INFO_NULL, &device_p->stream));
@@ -171,19 +202,24 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
   if (flag) max_tag = *(int*)max_tag_p;
   device_p->max_tag_2sided = max_tag - 1;
   device_p->put_tag = max_tag;
-  switch (mpi::config.comp_type) {
-    case mpi::config_t::comp_type_t::REQUEST:
-      device_p->pengine.comp_manager_p =
-          std::make_unique<mpi::comp::manager_req_t>();
-      break;
-    case mpi::config_t::comp_type_t::CONTINUE:
-#ifdef LCW_MPI_USE_CONT
-      device_p->pengine.comp_manager_p =
-          std::make_unique<mpi::comp::manager_cont_t>();
-#else
-      LCW_Assert(false, "comp_type cont is not enabled!\n");
-#endif
-      break;
+  if (!mpi::g_comp_managers.empty()) {
+    device_p->pengine.comp_manager_p =
+        mpi::g_comp_managers[device_p->id % mpi::g_comp_managers.size()];
+  } else {
+      switch (mpi::config.comp_type) {
+        case mpi::config_t::comp_type_t::REQUEST:
+          device_p->pengine.comp_manager_p =
+              std::make_shared<mpi::comp::manager_req_t>();
+          break;
+        case mpi::config_t::comp_type_t::CONTINUE:
+     #ifdef LCW_MPI_USE_CONT
+          device_p->pengine.comp_manager_p =
+              std::make_shared<mpi::comp::manager_cont_t>();
+     #else
+          LCW_Assert(false, "comp_type cont is not enabled!\n");
+     #endif
+          break;
+      }
   }
   // 1sided
   if (max_put_length > 0) {

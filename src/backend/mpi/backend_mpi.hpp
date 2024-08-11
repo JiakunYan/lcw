@@ -61,14 +61,17 @@ struct config_t {
   uint64_t cont_flag = MPIX_CONT_IMMEDIATE | MPIX_CONT_FORGET;
 #endif
   int g_pending_msg_max = 256;
+  int g_num_comp_managers = 0;
 };
 extern config_t config;
 extern std::atomic<int> g_pending_msg;
+extern std::vector<std::shared_ptr<comp::manager_base_t>> g_comp_managers;
+extern std::atomic<int> g_ndevices;
 
 struct progress_engine_t {
   comp::entry_t put_entry;
   spinlock_t put_entry_lock;
-  std::unique_ptr<comp::manager_base_t> comp_manager_p;
+  std::shared_ptr<comp::manager_base_t> comp_manager_p;
 };
 
 struct device_t {
@@ -76,6 +79,7 @@ struct device_t {
   spinlock_t stream_lock;
   MPIX_Stream stream;
 #endif
+  int id;
   MPI_Comm comm;
   std::vector<char> put_rbuf;
   tag_t max_tag_2sided;
