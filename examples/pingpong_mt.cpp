@@ -70,8 +70,8 @@ void worker_thread_fn(int thread_id)
     LCT_tbarrier_arrive_and_wait(tbarrier_worker);
     auto start_time = LCT_now();
     for (int i = 0; i < config.niters; ++i) {
-      unsigned int seed = thread_id + i;
       if (config.test_mode) {
+        unsigned int seed = thread_id + i;
         write_buffer((char*)send_buffer, msg_size, seed);
         memset(recv_buffer, 0, msg_size);
       }
@@ -249,11 +249,12 @@ int main(int argc, char* argv[])
 
   for (int i = 0; i < config.ndevices; ++i) {
     device_t device;
-    device.put_cq = lcw::alloc_cq();
     if (config.op == lcw::op_t::SEND)
       device.device = lcw::alloc_device();
-    else
+    else {
+      device.put_cq = lcw::alloc_cq();
       device.device = lcw::alloc_device(config.max_size, device.put_cq);
+    }
     devices.push_back(device);
   }
 
@@ -300,7 +301,7 @@ int main(int argc, char* argv[])
   }
   for (auto& device : devices) {
     lcw::free_device(device.device);
-    lcw::free_cq(device.put_cq);
+    if (config.op == lcw::op_t::PUT) lcw::free_cq(device.put_cq);
   }
   lcw::finalize();
   return EXIT_SUCCESS;

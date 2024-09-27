@@ -178,6 +178,7 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
   auto* device_p = new mpi::device_t;
   auto device = reinterpret_cast<device_t>(device_p);
   device_p->id = mpi::g_ndevices++;
+  device_p->enable_put = (put_comp != nullptr);
   if (mpi::config.use_stream) {
 #ifdef LCW_MPI_USE_STREAM
     MPI_SAFECALL(MPIX_Stream_create(MPI_INFO_NULL, &device_p->stream));
@@ -200,8 +201,13 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
   int flag;
   MPI_Comm_get_attr(device_p->comm, MPI_TAG_UB, &max_tag_p, &flag);
   if (flag) max_tag = *(int*)max_tag_p;
-  device_p->max_tag_2sided = max_tag - 1;
-  device_p->put_tag = max_tag;
+  if (device_p->enable_put) {
+    device_p->max_tag_2sided = max_tag - 1;
+    device_p->put_tag = max_tag;
+  } else {
+    device_p->max_tag_2sided = max_tag;
+    device_p->put_tag = -1;
+  }
   if (!mpi::g_comp_managers.empty()) {
     device_p->pengine.comp_manager_p =
         mpi::g_comp_managers[device_p->id % mpi::g_comp_managers.size()];
@@ -222,12 +228,14 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
       }
   }
   // 1sided
-  if (max_put_length > 0) {
-    device_p->put_rbuf.resize(max_put_length);
-  } else {
-    device_p->put_rbuf.resize(mpi::config.default_max_put);
+  if (device_p->enable_put) {
+    if (max_put_length > 0) {
+      device_p->put_rbuf.resize(max_put_length);
+    } else {
+      device_p->put_rbuf.resize(mpi::config.default_max_put);
+    }
+    post_put_recv(device, put_comp);
   }
-  post_put_recv(device, put_comp);
   return device;
 }
 
@@ -251,7 +259,8 @@ bool backend_mpi_t::do_progress(device_t device)
   int succeed = 0;
   MPI_Status status;
   mpi::comp::entry_t entry;
-  if (device_p->pengine.put_entry.mpi_req != MPI_REQUEST_NULL &&
+  if (device_p->enable_put &&
+      device_p->pengine.put_entry.mpi_req != MPI_REQUEST_NULL &&
       device_p->pengine.put_entry_lock.try_lock()) {
     if (device_p->pengine.put_entry.mpi_req != MPI_REQUEST_NULL) {
       mpi::enter_stream_cs(device);
@@ -369,6 +378,10 @@ bool backend_mpi_t::recv(device_t device, rank_t rank, tag_t tag, void* buf,
 bool backend_mpi_t::put(device_t device, rank_t rank, void* buf, int64_t length,
                         comp_t completion, void* user_context)
 {
+  auto* device_p = reinterpret_cast<mpi::device_t*>(device);
+  LCW_Assert(device_p->enable_put,
+             "Put is not enabled! Please pass the put_comp when allocate the "
+             "device\n");
   if (mpi::config.g_pending_msg_max > 0) {
     if (mpi::g_pending_msg.load(std::memory_order_relaxed) >
         mpi::config.g_pending_msg_max) {
@@ -377,7 +390,6 @@ bool backend_mpi_t::put(device_t device, rank_t rank, void* buf, int64_t length,
       mpi::g_pending_msg.fetch_add(1, std::memory_order::memory_order_relaxed);
     }
   }
-  auto* device_p = reinterpret_cast<mpi::device_t*>(device);
   mpi::comp::entry_t entry = {.mpi_req = MPI_REQUEST_NULL,
                               .device = device,
                               .completion = completion,

@@ -80,6 +80,7 @@ struct device_t {
   MPIX_Stream stream;
 #endif
   int id;
+  bool enable_put;
   MPI_Comm comm;
   std::vector<char> put_rbuf;
   tag_t max_tag_2sided;
