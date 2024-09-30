@@ -193,7 +193,7 @@ void worker_thread_fn(int thread_id)
     LCT_tbarrier_arrive_and_wait(tbarrier_worker);
     auto total_time = LCT_now() - start_time;
     double total_time_s = LCT_time_to_s(total_time);
-    double msg_rate = config.niters * nworkers / total_time_s;
+    double msg_rate = config.niters * nworkers * nranks / 2 / total_time_s;
     double bandwidth = msg_rate * msg_size;
     if (rank == 0 && thread_id == 0) {
       std::cout << "====================================\n"

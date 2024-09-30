@@ -30,7 +30,9 @@ void manager_cont_t::add_entry(entry_t entry)
   mpi::leave_stream_cs(entry.device);
 }
 
-bool manager_cont_t::do_progress() { return false; }
+bool manager_cont_t::do_progress() { 
+  return false; 
+}
 }  // namespace comp
 }  // namespace mpi
 }  // namespace lcw

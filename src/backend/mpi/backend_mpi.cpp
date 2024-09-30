@@ -69,6 +69,9 @@ void backend_mpi_t::initialize()
     if (!succeed) {
       LCW_Warn("Unknown LCW_MPI_COMP_TYPE %s\n", getenv("LCW_MPI_COMP_TYPE"));
     }
+#ifndef LCW_MPI_USE_STREAM
+    LCW_Assert(mpi::config.comp_type != mpi::config_t::comp_type_t::CONTINUE, "MPIX Continue is not enabled!\n");
+#endif
     LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_COMP_TYPE to %d\n",
             mpi::config.comp_type);
   }
@@ -178,7 +181,9 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
   auto* device_p = new mpi::device_t;
   auto device = reinterpret_cast<device_t>(device_p);
   device_p->id = mpi::g_ndevices++;
-  device_p->enable_put = (put_comp != nullptr);
+  // device_p->enable_put = (put_comp != nullptr);
+  // Currently, we have to always set this to true to make sure communication progressing.
+  device_p->enable_put = true;
   if (mpi::config.use_stream) {
 #ifdef LCW_MPI_USE_STREAM
     MPI_SAFECALL(MPIX_Stream_create(MPI_INFO_NULL, &device_p->stream));
