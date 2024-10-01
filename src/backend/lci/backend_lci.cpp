@@ -86,7 +86,7 @@ bool backend_lci_t::poll_cq(comp_t completion, request_t* request)
         .op = op_t::PUT_SIGNAL,
         .device = nullptr,
         .rank = lci_req.rank,
-        .tag = 0,
+        .tag = lci_req.tag,
         .buffer = buffer,
         .length = static_cast<int64_t>(lci_req.data.mbuffer.length),
         .user_context = nullptr,

@@ -70,7 +70,8 @@ void backend_mpi_t::initialize()
       LCW_Warn("Unknown LCW_MPI_COMP_TYPE %s\n", getenv("LCW_MPI_COMP_TYPE"));
     }
 #ifndef LCW_MPI_USE_STREAM
-    LCW_Assert(mpi::config.comp_type != mpi::config_t::comp_type_t::CONTINUE, "MPIX Continue is not enabled!\n");
+    LCW_Assert(mpi::config.comp_type != mpi::config_t::comp_type_t::CONTINUE,
+               "MPIX Continue is not enabled!\n");
 #endif
     LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_COMP_TYPE to %d\n",
             mpi::config.comp_type);
@@ -129,7 +130,7 @@ void backend_mpi_t::initialize()
 
   if (mpi::config.g_num_comp_managers) {
     mpi::g_comp_managers.resize(mpi::config.g_num_comp_managers);
-    for (auto &p : mpi::g_comp_managers) {
+    for (auto& p : mpi::g_comp_managers) {
       switch (mpi::config.comp_type) {
         case mpi::config_t::comp_type_t::REQUEST:
           p = std::make_shared<mpi::comp::manager_req_t>();
@@ -182,7 +183,8 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
   auto device = reinterpret_cast<device_t>(device_p);
   device_p->id = mpi::g_ndevices++;
   // device_p->enable_put = (put_comp != nullptr);
-  // Currently, we have to always set this to true to make sure communication progressing.
+  // Currently, we have to always set this to true to make sure communication
+  // progressing.
   device_p->enable_put = true;
   if (mpi::config.use_stream) {
 #ifdef LCW_MPI_USE_STREAM
@@ -217,20 +219,20 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
     device_p->pengine.comp_manager_p =
         mpi::g_comp_managers[device_p->id % mpi::g_comp_managers.size()];
   } else {
-      switch (mpi::config.comp_type) {
-        case mpi::config_t::comp_type_t::REQUEST:
-          device_p->pengine.comp_manager_p =
-              std::make_shared<mpi::comp::manager_req_t>();
-          break;
-        case mpi::config_t::comp_type_t::CONTINUE:
-     #ifdef LCW_MPI_USE_CONT
-          device_p->pengine.comp_manager_p =
-              std::make_shared<mpi::comp::manager_cont_t>();
-     #else
-          LCW_Assert(false, "comp_type cont is not enabled!\n");
-     #endif
-          break;
-      }
+    switch (mpi::config.comp_type) {
+      case mpi::config_t::comp_type_t::REQUEST:
+        device_p->pengine.comp_manager_p =
+            std::make_shared<mpi::comp::manager_req_t>();
+        break;
+      case mpi::config_t::comp_type_t::CONTINUE:
+#ifdef LCW_MPI_USE_CONT
+        device_p->pengine.comp_manager_p =
+            std::make_shared<mpi::comp::manager_cont_t>();
+#else
+        LCW_Assert(false, "comp_type cont is not enabled!\n");
+#endif
+        break;
+    }
   }
   // 1sided
   if (device_p->enable_put) {

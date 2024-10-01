@@ -25,14 +25,12 @@ void manager_cont_t::add_entry(entry_t entry)
   LCW_Log(LCW_LOG_TRACE, "comp", "Attach continuation %p\n", entry.mpi_req);
   mpi::enter_stream_cs(entry.device);
   MPI_SAFECALL(MPIX_Continue(&entry.mpi_req, &complete_cb, entry_p,
-                             mpi::config.cont_flag,
-                             MPI_STATUS_IGNORE, cont_req));
+                             mpi::config.cont_flag, MPI_STATUS_IGNORE,
+                             cont_req));
   mpi::leave_stream_cs(entry.device);
 }
 
-bool manager_cont_t::do_progress() { 
-  return false; 
-}
+bool manager_cont_t::do_progress() { return false; }
 }  // namespace comp
 }  // namespace mpi
 }  // namespace lcw
