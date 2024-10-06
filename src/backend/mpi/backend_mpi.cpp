@@ -147,7 +147,11 @@ void backend_mpi_t::initialize()
   }
 }
 
-void backend_mpi_t::finalize() { MPI_SAFECALL(MPI_Finalize()); }
+void backend_mpi_t::finalize()
+{
+  mpi::g_comp_managers.clear();
+  MPI_SAFECALL(MPI_Finalize());
+}
 
 int64_t backend_mpi_t::get_rank() { return mpi::g_rank; }
 
