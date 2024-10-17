@@ -58,7 +58,8 @@ struct config_t {
 #endif
   bool use_stream = false;
 #ifdef LCW_MPI_USE_CONT
-  uint64_t cont_flag = MPIX_CONT_IMMEDIATE | MPIX_CONT_FORGET;
+  bool use_cont_imm = true;
+  bool use_cont_req = false;
 #endif
   int g_pending_msg_max = 256;
   int g_num_comp_managers = 0;

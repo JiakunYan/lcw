@@ -111,20 +111,24 @@ void backend_mpi_t::initialize()
   }
 
 #ifdef LCW_MPI_USE_CONT
+  // Whether to use the immediate flag
   {
-    // if users explicitly set the value
-    char* p = getenv("LCW_MPI_CONT_FLAG");
+    char* p = getenv("LCW_MPI_CONT_IMM");
     if (p) {
-      LCT_dict_str_int_t dict[] = {
-          {"none", 0},
-          {"imm", MPIX_CONT_IMMEDIATE},
-          {"forget", MPIX_CONT_FORGET},
-      };
-      mpi::config.cont_flag =
-          LCT_parse_arg(dict, sizeof(dict) / sizeof(dict[0]), p, ",");
+      mpi::config.use_cont_imm = atoi(p);
     }
-    LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_CONT_FLAG to %d\n",
-            mpi::config.cont_flag);
+    LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_CONT_IMM to %d\n",
+            mpi::config.use_cont_imm);
+  }
+
+  // Whether to use the continuation request (or just nullptr)
+  {
+    char* p = getenv("LCW_MPI_CONT_REQ");
+    if (p) {
+      mpi::config.use_cont_req = atoi(p);
+    }
+    LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_CONT_REQ to %d\n",
+            mpi::config.use_cont_req);
   }
 #endif
 

@@ -13,12 +13,19 @@ namespace mpi
 namespace comp
 {
 struct manager_cont_t : public manager_base_t {
-  manager_cont_t()
+  manager_cont_t() : cont_req(MPI_REQUEST_NULL)
   {
-    MPIX_Continue_init(0, 0, MPI_INFO_NULL, &cont_req);
-    MPI_Start(&cont_req);
+    if (mpi::config.use_cont_req) {
+      MPI_SAFECALL(MPIX_Continue_init(0, 0, MPI_INFO_NULL, &cont_req));
+      MPI_SAFECALL(MPI_Start(&cont_req));
+    }
   }
-  ~manager_cont_t() { MPI_Request_free(&cont_req); }
+  ~manager_cont_t()
+  {
+    if (cont_req != MPI_REQUEST_NULL) {
+      MPI_SAFECALL(MPI_Request_free(&cont_req));
+    }
+  }
   void add_entry(entry_t entry) override;
   bool do_progress() override;
   MPI_Request cont_req;
