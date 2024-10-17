@@ -30,7 +30,21 @@ void manager_cont_t::add_entry(entry_t entry)
   mpi::leave_stream_cs(entry.device);
 }
 
-bool manager_cont_t::do_progress() { return false; }
+bool manager_cont_t::do_progress() { 
+  if (!(mpi::config.cont_flag & MPIX_CONT_FORGET)) {
+    // we need to test and start the continuation request.
+    if (!lock.try_lock())
+      return false;
+    int succeed = 0;
+    MPI_SAFECALL(MPI_Test(&cont_req, &succeed, MPI_STATUS_IGNORE));
+    if (succeed) {
+      MPI_SAFECALL(MPI_Start(&cont_req));
+    }
+    lock.unlock();
+  }
+  return false; 
+}
+
 }  // namespace comp
 }  // namespace mpi
 }  // namespace lcw
