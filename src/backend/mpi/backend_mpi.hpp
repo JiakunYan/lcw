@@ -116,21 +116,21 @@ static void push_cq(const comp::entry_t& entry)
     case op_t::SEND:
       if (config.g_pending_msg_max > 0)
         g_pending_msg.fetch_sub(1, std::memory_order::memory_order_relaxed);
-      pcounter_add(send_end);
+      pcounter::add(pcounter::send_end);
       break;
     case op_t::RECV:
-      pcounter_add(recv_end);
+      pcounter::add(pcounter::recv_end);
       break;
     case op_t::PUT:
       if (config.g_pending_msg_max > 0)
         g_pending_msg.fetch_sub(1, std::memory_order::memory_order_relaxed);
-      pcounter_add(put_end);
+      pcounter::add(pcounter::put_end);
       break;
     case op_t::PUT_SIGNAL:
-      pcounter_add(put_signal);
+      pcounter::add(pcounter::put_signal);
       break;
   }
-  pcounter_add(comp_produce);
+  pcounter::add(pcounter::comp_produce);
   LCT_queue_push(cq, entry.request);
 }
 }  // namespace mpi

@@ -16,9 +16,11 @@ int64_t backend_lci_t::get_nranks() { return LCI_NUM_PROCESSES; }
 namespace lci
 {
 struct device_t {
+  int id;
   LCI_device_t device;
   LCI_endpoint_t ep;
 };
+std::atomic<int> g_ndevices(0);
 }  // namespace lci
 
 device_t backend_lci_t::alloc_device(int64_t max_put_length, comp_t put_comp)
@@ -26,9 +28,13 @@ device_t backend_lci_t::alloc_device(int64_t max_put_length, comp_t put_comp)
   LCW_Assert(max_put_length <= LCI_MEDIUM_SIZE,
              "the put length is too large!\n");
   auto* device_p = new lci::device_t;
-  auto device = reinterpret_cast<device_t>(device_p);
+  device_p->id = mpi::g_ndevices++;
+  if (device_p->id == 0) {
+    device_p->device = LCI_UR_DEVICE;
+  } else {
+    LCI_SAFECALL(LCI_device_init(&device_p->device));
+  }
   auto cq = reinterpret_cast<LCI_comp_t>(put_comp);
-  LCI_SAFECALL(LCI_device_init(&device_p->device));
   LCI_plist_t plist;
   LCI_SAFECALL(LCI_plist_create(&plist));
   LCI_SAFECALL(
@@ -39,6 +45,8 @@ device_t backend_lci_t::alloc_device(int64_t max_put_length, comp_t put_comp)
   LCI_SAFECALL(LCI_plist_set_default_comp(plist, cq));
   LCI_SAFECALL(LCI_endpoint_init(&device_p->ep, device_p->device, plist));
   LCI_SAFECALL(LCI_plist_free(&plist));
+
+  auto device = reinterpret_cast<device_t>(device_p);
   return device;
 }
 
@@ -46,7 +54,7 @@ void backend_lci_t::free_device(device_t device)
 {
   auto* device_p = reinterpret_cast<lci::device_t*>(device);
   LCI_SAFECALL(LCI_endpoint_free(&device_p->ep));
-  LCI_SAFECALL(LCI_device_free(&device_p->device));
+  if (device_p->id != 0) LCI_SAFECALL(LCI_device_free(&device_p->device));
 }
 
 bool backend_lci_t::do_progress(device_t device)

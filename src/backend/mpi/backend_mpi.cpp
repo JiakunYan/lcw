@@ -257,7 +257,7 @@ device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
 void backend_mpi_t::free_device(device_t device)
 {
   auto* device_p = reinterpret_cast<mpi::device_t*>(device);
-  MPI_SAFECALL(MPI_Comm_free(&device_p->comm));
+  if (device_p->id != 0) MPI_SAFECALL(MPI_Comm_free(&device_p->comm));
 #ifdef LCW_MPI_USE_STREAM
   if (mpi::config.use_stream) {
     MPI_SAFECALL(MPIX_Stream_free(&device_p->stream));

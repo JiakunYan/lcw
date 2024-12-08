@@ -3,14 +3,15 @@ if (NOT TARGET LCW::LCW)
     @PACKAGE_INIT@
 
     LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/LCW")
-    include(CMakeFindDependencyMacro)
-
-    find_dependency(LCI)
-    find_dependency(MPI)
 
     set_and_check(LCW_INCLUDE_DIRS "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
     set_and_check(LCW_LIBRARY "@PACKAGE_CMAKE_INSTALL_LIBDIR@/@CMAKE_SHARED_LIBRARY_PREFIX@lcw@CMAKE_SHARED_LIBRARY_SUFFIX@")
 
+    include(CMakeFindDependencyMacro)
+
+    find_dependency(LCI)
+    find_dependency(MPI)
+    
     add_library(LCW::LCW SHARED IMPORTED)
     set_target_properties(LCW::LCW PROPERTIES
       IMPORTED_LOCATION ${LCW_LIBRARY}

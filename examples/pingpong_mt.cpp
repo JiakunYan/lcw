@@ -14,8 +14,8 @@
  * Multithreaded ping-pong benchmark
  */
 
-void worker_thread_fn(int thread_id);
-void progress_thread_fn(int thread_id);
+void worker_thread_fn(int worker_id);
+void progress_thread_fn(int progress_id);
 
 struct Config {
   lcw::op_t op = lcw::op_t::SEND;
@@ -44,16 +44,57 @@ static std::atomic<bool> progress_thread_stop(false);
 LCT_tbarrier_t tbarrier_all;
 LCT_tbarrier_t tbarrier_worker;
 
-int get_tag(int thread_id, int iter, int idx)
+int get_tag(int worker_id, int iter, int idx)
 {
-  return thread_id + iter * config.nthreads +
-         idx * config.niters * config.nthreads;
+  int nworkers = config.nthreads - config.nprgthreads;
+  return worker_id + iter * nworkers + idx * config.niters * nworkers;
 }
 
-void worker_thread_fn(int thread_id)
+device_t& get_device(int worker_id)
 {
+  assert(devices.size() == config.ndevices);
+  int nworkers = config.nthreads - config.nprgthreads;
+  int nworkers_per_device = (nworkers + devices.size() - 1) / devices.size();
+  int device_idx = worker_id / nworkers_per_device;
+  assert(devices.size() > device_idx);
+  // We need to allocate the devices sequentially in the same order
+  for (int i = 0; i < devices.size(); ++i) {
+    if (worker_id % nworkers_per_device == 0 && device_idx == i) {
+      // allocate the device
+      if (config.op == lcw::op_t::SEND)
+        devices[device_idx].device = lcw::alloc_device();
+      else {
+        devices[device_idx].put_cq = lcw::alloc_cq();
+        devices[device_idx].device =
+            lcw::alloc_device(config.max_size, devices[device_idx].put_cq);
+      }
+      LCT_tbarrier_arrive_and_wait(tbarrier_worker);
+    } else {
+      // wait for the device to be allocated
+      LCT_tbarrier_arrive_and_wait(tbarrier_worker);
+    }
+  }
+  // if (worker_id % nworkers_per_device == 0) {
+  //   // allocate the device
+  //   if (config.op == lcw::op_t::SEND)
+  //     devices[device_idx].device = lcw::alloc_device();
+  //   else {
+  //     devices[device_idx].put_cq = lcw::alloc_cq();
+  //     devices[device_idx].device = lcw::alloc_device(config.max_size,
+  //     devices[device_idx].put_cq);
+  //   }
+  //   LCT_tbarrier_arrive_and_wait(tbarrier_worker);
+  // } else {
+  //   // wait for the device to be allocated
+  //   LCT_tbarrier_arrive_and_wait(tbarrier_worker);
+  // }
+  return devices[device_idx];
+}
+
+void worker_thread_fn(int worker_id)
+{
+  device_t& device = get_device(worker_id);
   LCT_tbarrier_arrive_and_wait(tbarrier_all);
-  device_t& device = devices[thread_id % devices.size()];
   int64_t rank = lcw::get_rank();
   int64_t nranks = lcw::get_nranks();
   int64_t peer_rank = (rank + nranks / 2) % nranks;
@@ -87,7 +128,7 @@ void worker_thread_fn(int thread_id)
               memset(recv_buffer + j * msg_size, 0, msg_size);
             }
             while (!lcw::recv(device.device, peer_rank,
-                              get_tag(thread_id, i, j),
+                              get_tag(worker_id, i, j),
                               recv_buffer + j * msg_size, msg_size, rcq,
                               reinterpret_cast<void*>(i))) {
               if (need_progress) lcw::do_progress(device.device);
@@ -99,13 +140,13 @@ void worker_thread_fn(int thread_id)
           // Prepare the data to send
           if (config.test_mode) {
             write_buffer((char*)send_buffer + j * msg_size, msg_size,
-                         get_tag(thread_id, i, j));
+                         get_tag(worker_id, i, j));
           }
           while (true) {
             bool ret;
             if (config.op == lcw::op_t::SEND)
               ret =
-                  lcw::send(device.device, peer_rank, get_tag(thread_id, i, j),
+                  lcw::send(device.device, peer_rank, get_tag(worker_id, i, j),
                             send_buffer + j * msg_size, msg_size, scq,
                             reinterpret_cast<void*>(i));
             else
@@ -130,7 +171,7 @@ void worker_thread_fn(int thread_id)
             assert(sreq.buffer == send_buffer + j * msg_size);
             assert(sreq.rank == peer_rank);
             if (config.op == lcw::op_t::SEND)
-              assert(sreq.tag == get_tag(thread_id, i, j));
+              assert(sreq.tag == get_tag(worker_id, i, j));
           }
         }
         // Wait for the recv to complete
@@ -150,7 +191,7 @@ void worker_thread_fn(int thread_id)
             if (config.op == lcw::op_t::SEND) {
               assert(rreq.buffer == recv_buffer + j * msg_size);
               assert(rreq.user_context == reinterpret_cast<void*>(i));
-              assert(rreq.tag == get_tag(thread_id, i, j));
+              assert(rreq.tag == get_tag(worker_id, i, j));
               check_buffer((char*)recv_buffer, msg_size);
             } else {
               check_buffer((char*)rreq.buffer, msg_size);
@@ -167,7 +208,7 @@ void worker_thread_fn(int thread_id)
           }
           if (config.op == lcw::op_t::SEND) {
             while (!lcw::recv(device.device, peer_rank,
-                              get_tag(thread_id, i, j),
+                              get_tag(worker_id, i, j),
                               recv_buffer + j * msg_size, msg_size, rcq,
                               reinterpret_cast<void*>(i))) {
               if (need_progress) lcw::do_progress(device.device);
@@ -189,7 +230,7 @@ void worker_thread_fn(int thread_id)
             if (config.op == lcw::op_t::SEND) {
               assert(rreq.buffer == recv_buffer + j * msg_size);
               assert(rreq.user_context == reinterpret_cast<void*>(i));
-              assert(rreq.tag == get_tag(thread_id, i, j));
+              assert(rreq.tag == get_tag(worker_id, i, j));
               check_buffer((char*)recv_buffer, msg_size);
             } else {
               check_buffer((char*)rreq.buffer, msg_size);
@@ -202,13 +243,13 @@ void worker_thread_fn(int thread_id)
           // Prepare the data to send
           if (config.test_mode) {
             write_buffer((char*)send_buffer + j * msg_size, msg_size,
-                         get_tag(thread_id, i, j));
+                         get_tag(worker_id, i, j));
           }
           while (true) {
             bool ret;
             if (config.op == lcw::op_t::SEND)
               ret =
-                  lcw::send(device.device, peer_rank, get_tag(thread_id, i, j),
+                  lcw::send(device.device, peer_rank, get_tag(worker_id, i, j),
                             send_buffer + j * msg_size, msg_size, scq,
                             reinterpret_cast<void*>(i));
             else
@@ -232,7 +273,7 @@ void worker_thread_fn(int thread_id)
             assert(sreq.buffer == send_buffer);
             assert(sreq.rank == peer_rank);
             if (config.op == lcw::op_t::SEND)
-              assert(sreq.tag == get_tag(thread_id, i, j));
+              assert(sreq.tag == get_tag(worker_id, i, j));
           }
         }
       }
@@ -243,7 +284,7 @@ void worker_thread_fn(int thread_id)
     double msg_rate = config.niters * nworkers * nranks * config.send_window /
                       2 / total_time_s;
     double bandwidth = msg_rate * msg_size;
-    if (rank == 0 && thread_id == 0) {
+    if (rank == 0 && worker_id == 0) {
       std::cout << "====================================\n"
                 << "Message size (B): " << msg_size << "\n"
                 << "Total time (s): " << total_time_s << "\n"
@@ -257,12 +298,17 @@ void worker_thread_fn(int thread_id)
   if (config.op == lcw::op_t::SEND) lcw::free_cq(rcq);
 }
 
-void progress_thread_fn(int thread_id)
+void progress_thread_fn(int progress_id)
 {
   LCT_tbarrier_arrive_and_wait(tbarrier_all);
+  assert(config.nprgthreads <= devices.size());
+  int ndevices_per_prgthread =
+      (devices.size() + config.nprgthreads - 1) / config.nprgthreads;
   while (!progress_thread_stop) {
-    for (int i = thread_id; i < devices.size(); i += config.nprgthreads) {
-      lcw::do_progress(devices[i].device);
+    for (int i = 0; i < ndevices_per_prgthread; ++i) {
+      int device_idx = progress_id * ndevices_per_prgthread + i;
+      if (device_idx >= devices.size()) break;
+      lcw::do_progress(devices[device_idx].device);
     }
   }
 }
@@ -299,16 +345,7 @@ int main(int argc, char* argv[])
   if (lcw::get_rank() == 0) LCT_args_parser_print(argsParser, true);
   LCT_args_parser_free(argsParser);
 
-  for (int i = 0; i < config.ndevices; ++i) {
-    device_t device;
-    if (config.op == lcw::op_t::SEND)
-      device.device = lcw::alloc_device();
-    else {
-      device.put_cq = lcw::alloc_cq();
-      device.device = lcw::alloc_device(config.max_size, device.put_cq);
-    }
-    devices.push_back(device);
-  }
+  devices.resize(config.ndevices);
 
   assert(config.nthreads > config.nprgthreads);
   assert(config.nthreads > 0);
