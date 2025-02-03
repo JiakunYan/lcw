@@ -1,6 +1,6 @@
 #ifndef LCW_BACKEND_MPI_HPP
 #define LCW_BACKEND_MPI_HPP
-#include <mpi.h>
+#include "mpi.h"
 
 #ifdef MPIX_STREAM_NULL
 #define LCW_MPI_USE_STREAM

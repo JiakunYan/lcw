@@ -1,6 +1,7 @@
 #include <vector>
 #include <cstring>
 #include "lcwi.hpp"
+#include "bigcount_wrapper.hpp"
 
 namespace lcw
 {
@@ -178,9 +179,11 @@ void post_put_recv(device_t device, comp_t completion)
           .user_context = nullptr,
       }};
   mpi::enter_stream_cs(device);
-  MPI_SAFECALL(MPI_Irecv(entry.request->buffer, entry.request->length, MPI_CHAR,
-                         MPI_ANY_SOURCE, entry.request->tag, device_p->comm,
-                         &entry.mpi_req));
+  // MPI_SAFECALL(MPI_Irecv(entry.request->buffer, entry.request->length, MPI_CHAR,
+                        //  MPI_ANY_SOURCE, entry.request->tag, device_p->comm,
+                        //  &entry.mpi_req));
+  entry.mpi_req = mpi::irecv(entry.request->buffer, entry.request->length,
+                             MPI_ANY_SOURCE, entry.request->tag, device_p->comm);
   mpi::leave_stream_cs(device);
   device_p->pengine.put_entry = entry;
 }
@@ -359,8 +362,9 @@ bool backend_mpi_t::send(device_t device, rank_t rank, tag_t tag, void* buf,
                                   .user_context = user_context,
                               }};
   mpi::enter_stream_cs(device);
-  MPI_SAFECALL(MPI_Isend(buf, length, MPI_CHAR, rank, tag, device_p->comm,
-                         &entry.mpi_req));
+  // MPI_SAFECALL(MPI_Isend(buf, length, MPI_CHAR, rank, tag, device_p->comm,
+  //                        &entry.mpi_req));
+  entry.mpi_req = mpi::isend(buf, length, rank, tag, device_p->comm);
   mpi::leave_stream_cs(device);
   device_p->pengine.comp_manager_p->add_entry(entry);
   return true;
@@ -383,8 +387,9 @@ bool backend_mpi_t::recv(device_t device, rank_t rank, tag_t tag, void* buf,
                                   .user_context = user_context,
                               }};
   mpi::enter_stream_cs(device);
-  MPI_SAFECALL(MPI_Irecv(buf, length, MPI_CHAR, rank, tag, device_p->comm,
-                         &entry.mpi_req));
+  // MPI_SAFECALL(MPI_Irecv(buf, length, MPI_CHAR, rank, tag, device_p->comm,
+                        //  &entry.mpi_req));
+  entry.mpi_req = mpi::irecv(buf, length, rank, tag, device_p->comm);
   mpi::leave_stream_cs(device);
   device_p->pengine.comp_manager_p->add_entry(entry);
   return true;
@@ -418,9 +423,12 @@ bool backend_mpi_t::put(device_t device, rank_t rank, void* buf, int64_t length,
                                   .user_context = user_context,
                               }};
   mpi::enter_stream_cs(device);
-  MPI_SAFECALL(MPI_Isend(entry.request->buffer, entry.request->length, MPI_CHAR,
-                         entry.request->rank, entry.request->tag,
-                         device_p->comm, &entry.mpi_req));
+  // MPI_SAFECALL(MPI_Isend(entry.request->buffer, entry.request->length, MPI_CHAR,
+                        //  entry.request->rank, entry.request->tag,
+                        //  device_p->comm, &entry.mpi_req));
+  entry.mpi_req = mpi::isend(entry.request->buffer, entry.request->length,
+                        entry.request->rank, entry.request->tag,
+                        device_p->comm);
   mpi::leave_stream_cs(device);
   device_p->pengine.comp_manager_p->add_entry(entry);
   return true;
