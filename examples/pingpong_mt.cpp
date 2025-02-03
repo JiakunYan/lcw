@@ -48,7 +48,8 @@ LCT_tbarrier_t tbarrier_worker;
 int get_tag(int worker_id, int iter, int idx)
 {
   int nworkers = config.nthreads - config.nprgthreads;
-  return worker_id + iter * nworkers + idx * config.niters * nworkers;
+  // return worker_id + iter * nworkers + idx * config.niters * nworkers;
+  return worker_id + idx * nworkers;
 }
 
 device_t& get_device(int worker_id)
@@ -203,7 +204,7 @@ void worker_thread_fn(int worker_id)
               assert(rreq.buffer == recv_buffer + j * msg_size);
               assert(rreq.user_context == reinterpret_cast<void*>(i));
               assert(rreq.tag == get_tag(worker_id, i, j));
-              check_buffer((char*)recv_buffer, msg_size);
+              check_buffer((char*)rreq.buffer, msg_size);
             } else {
               check_buffer((char*)rreq.buffer, msg_size);
               free(rreq.buffer);
@@ -215,12 +216,12 @@ void worker_thread_fn(int worker_id)
         // first recv
         for (int j = 0; j < config.send_window; ++j) {
           if (config.test_mode) {
-            memset(recv_buffer + j * msg_size, 0, msg_size);
+            memset(send_buffer + j * msg_size, 0, msg_size);
           }
           if (config.op == lcw::op_t::SEND) {
             while (!lcw::recv(device.device, peer_rank,
                               get_tag(worker_id, i, j),
-                              recv_buffer + j * msg_size, msg_size, rcq,
+                              send_buffer + j * msg_size, msg_size, rcq,
                               reinterpret_cast<void*>(i))) {
               if (need_progress) lcw::do_progress(device.device);
             }
@@ -240,10 +241,10 @@ void worker_thread_fn(int worker_id)
                                    : lcw::op_t::PUT_SIGNAL));
             assert(rreq.rank == peer_rank);
             if (config.op == lcw::op_t::SEND) {
-              assert(rreq.buffer == recv_buffer + j * msg_size);
+              assert(rreq.buffer == send_buffer + j * msg_size);
               assert(rreq.user_context == reinterpret_cast<void*>(i));
               assert(rreq.tag == get_tag(worker_id, i, j));
-              check_buffer((char*)recv_buffer, msg_size);
+              check_buffer((char*)rreq.buffer, msg_size);
             } else {
               check_buffer((char*)rreq.buffer, msg_size);
               free(rreq.buffer);
@@ -254,7 +255,7 @@ void worker_thread_fn(int worker_id)
         for (int j = 0; j < config.recv_window; ++j) {
           // Prepare the data to send
           if (config.test_mode) {
-            write_buffer((char*)send_buffer + j * msg_size, msg_size,
+            write_buffer((char*)recv_buffer + j * msg_size, msg_size,
                          get_tag(worker_id, i, j));
           }
           while (true) {
@@ -262,11 +263,11 @@ void worker_thread_fn(int worker_id)
             if (config.op == lcw::op_t::SEND)
               ret =
                   lcw::send(device.device, peer_rank, get_tag(worker_id, i, j),
-                            send_buffer + j * msg_size, msg_size, scq,
+                            recv_buffer + j * msg_size, msg_size, scq,
                             reinterpret_cast<void*>(i));
             else
               ret =
-                  lcw::put(device.device, peer_rank, send_buffer + j * msg_size,
+                  lcw::put(device.device, peer_rank, recv_buffer + j * msg_size,
                            msg_size, scq, reinterpret_cast<void*>(i));
             if (ret) break;
             if (need_progress) lcw::do_progress(device.device);
@@ -282,7 +283,7 @@ void worker_thread_fn(int worker_id)
             assert(sreq.length == msg_size);
             assert(sreq.user_context == reinterpret_cast<void*>(i));
             assert(sreq.op == config.op);
-            assert(sreq.buffer == send_buffer);
+            assert(sreq.buffer == recv_buffer);
             assert(sreq.rank == peer_rank);
             if (config.op == lcw::op_t::SEND)
               assert(sreq.tag == get_tag(worker_id, i, j));
