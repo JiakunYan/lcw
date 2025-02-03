@@ -28,6 +28,8 @@ class Lcw(CMakePackage):
 
     depends_on("mpi", when="backend=mpi")
     depends_on("lci")
+    depends_on("c", type="build")
+    depends_on("cxx", type="build")
 
     def cmake_args(self):
         args = [
