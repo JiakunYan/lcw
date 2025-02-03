@@ -29,6 +29,7 @@ struct Config {
   int nprgthreads = 1;
   int send_window = 1;
   int recv_window = 1;
+  int compute_us = 0;
 };
 
 const size_t NPROCESSORS = sysconf(_SC_NPROCESSORS_ONLN);
@@ -89,6 +90,15 @@ device_t& get_device(int worker_id)
   //   LCT_tbarrier_arrive_and_wait(tbarrier_worker);
   // }
   return devices[device_idx];
+}
+
+void do_computation(uint64_t compute_us)
+{
+  if (compute_us == 0) return;
+  uint64_t start = LCT_now();
+  while (LCT_time_to_us(LCT_now() - start) < compute_us) {
+    // busy wait
+  }
 }
 
 void worker_thread_fn(int worker_id)
@@ -180,6 +190,7 @@ void worker_thread_fn(int worker_id)
           while (!lcw::poll_cq(rcq, &rreq)) {
             if (need_progress) lcw::do_progress(device.device);
           }
+          do_computation(config.compute_us);
           if (config.test_mode) {
             assert(rreq.device == device.device ||
                    rreq.op == lcw::op_t::PUT_SIGNAL);
@@ -220,6 +231,7 @@ void worker_thread_fn(int worker_id)
           while (!lcw::poll_cq(rcq, &rreq)) {
             if (need_progress) lcw::do_progress(device.device);
           }
+          do_computation(config.compute_us);
           if (config.test_mode) {
             assert(rreq.device == device.device);
             assert(rreq.length == msg_size);
@@ -339,6 +351,8 @@ int main(int argc, char* argv[])
                       &config.send_window);
   LCT_args_parser_add(argsParser, "recv-window", required_argument,
                       &config.recv_window);
+  LCT_args_parser_add(argsParser, "compute-us", required_argument,
+                      &config.compute_us);
   LCT_args_parser_parse(argsParser, argc, argv);
 
   lcw::initialize();
