@@ -6,6 +6,7 @@
 #include <vector>
 #include <cstring>
 #include <getopt.h>
+#include <random>
 #include "lcw.hpp"
 #include "lct.h"
 #include "comm_exp.hpp"
@@ -30,6 +31,9 @@ struct Config {
   int send_window = 1;
   int recv_window = 1;
   int compute_us = 0;
+  int compute_us_std = 0;
+  int max_progress_steps = 1000;
+  int use_shared_cq = 0;
 };
 
 const size_t NPROCESSORS = sysconf(_SC_NPROCESSORS_ONLN);
@@ -44,6 +48,34 @@ Config config;
 static std::atomic<bool> progress_thread_stop(false);
 LCT_tbarrier_t tbarrier_all;
 LCT_tbarrier_t tbarrier_worker;
+lcw::comp_t shared_scq;
+lcw::comp_t shared_rcq;
+
+// random
+struct rand_generator_t {
+  virtual int get() = 0;
+};
+
+struct uniform_rand_generator_t : rand_generator_t {
+  std::mt19937 gen;
+  std::uniform_int_distribution<int> d;
+  uniform_rand_generator_t(int min, int max)
+      : gen(std::random_device()()), d(min, max)
+  {
+  }
+  int get() { return d(gen); }
+};
+
+struct normal_rand_generator_t : rand_generator_t {
+  std::mt19937 gen;
+  std::normal_distribution<double> d;
+  normal_rand_generator_t(int mean, int std)
+      : gen(std::random_device()()), d(mean, std)
+  {
+  }
+  int get() { return static_cast<int>(d(gen)); }
+};
+__thread rand_generator_t* rand_generator = nullptr;
 
 int get_tag(int worker_id, int iter, int idx)
 {
@@ -66,7 +98,11 @@ device_t& get_device(int worker_id)
       if (config.op == lcw::op_t::SEND)
         devices[device_idx].device = lcw::alloc_device();
       else {
-        devices[device_idx].put_cq = lcw::alloc_cq();
+        if (config.use_shared_cq) {
+          devices[device_idx].put_cq = shared_rcq;
+        } else {
+          devices[device_idx].put_cq = lcw::alloc_cq();
+        }
         devices[device_idx].device =
             lcw::alloc_device(config.max_size, devices[device_idx].put_cq);
       }
@@ -93,17 +129,37 @@ device_t& get_device(int worker_id)
   return devices[device_idx];
 }
 
-void do_computation(uint64_t compute_us)
+void do_computation()
 {
-  if (compute_us == 0) return;
+  if (config.compute_us == 0) return;
   uint64_t start = LCT_now();
-  while (LCT_time_to_us(LCT_now() - start) < compute_us) {
-    // busy wait
+  int compute_us = config.compute_us;
+  if (config.compute_us_std > 0) {
+    // normal distribution
+    compute_us = rand_generator->get();
   }
+  while (LCT_time_to_us(LCT_now() - start) < compute_us) continue;
+}
+
+void do_progress(device_t& device)
+{
+  int max_progress_steps = config.max_progress_steps;
+  if (max_progress_steps == 0)
+    max_progress_steps = std::numeric_limits<int>::max();
+  for (int i = 0; i < max_progress_steps; ++i) {
+    bool ret = lcw::do_progress(device.device);
+    if (!ret) break;
+  }
+  return;
 }
 
 void worker_thread_fn(int worker_id)
 {
+  if (config.compute_us > 0 && config.compute_us_std > 0) {
+    rand_generator =
+        new normal_rand_generator_t(config.compute_us, config.compute_us_std);
+  }
+
   device_t& device = get_device(worker_id);
   LCT_tbarrier_arrive_and_wait(tbarrier_all);
   int64_t rank = lcw::get_rank();
@@ -111,12 +167,18 @@ void worker_thread_fn(int worker_id)
   int64_t peer_rank = (rank + nranks / 2) % nranks;
   bool need_progress = config.nprgthreads == 0;
   int nworkers = config.nthreads - config.nprgthreads;
-  lcw::comp_t scq = lcw::alloc_cq();
-  lcw::comp_t rcq;
-  if (config.op == lcw::op_t::SEND)
-    rcq = lcw::alloc_cq();
-  else
-    rcq = device.put_cq;
+  lcw::comp_t scq, rcq;
+  if (config.use_shared_cq) {
+    scq = shared_scq;
+    rcq = shared_rcq;
+  } else {
+    scq = lcw::alloc_cq();
+    if (config.op == lcw::op_t::SEND)
+      rcq = lcw::alloc_cq();
+    else
+      rcq = device.put_cq;
+  }
+
   for (int msg_size = config.min_size; msg_size <= config.max_size;
        msg_size *= 2) {
     char *send_buffer, *recv_buffer;
@@ -142,7 +204,7 @@ void worker_thread_fn(int worker_id)
                               get_tag(worker_id, i, j),
                               recv_buffer + j * msg_size, msg_size, rcq,
                               reinterpret_cast<void*>(i))) {
-              if (need_progress) lcw::do_progress(device.device);
+              if (need_progress) do_progress(device.device);
             }
           }
         }
@@ -165,14 +227,14 @@ void worker_thread_fn(int worker_id)
                   lcw::put(device.device, peer_rank, send_buffer + j * msg_size,
                            msg_size, scq, reinterpret_cast<void*>(i));
             if (ret) break;
-            if (need_progress) lcw::do_progress(device.device);
+            if (need_progress) do_progress(device.device);
           }
         }
         // Wait for all sends to complete
         for (int j = 0; j < config.send_window; ++j) {
           lcw::request_t sreq;
           while (!lcw::poll_cq(scq, &sreq)) {
-            if (need_progress) lcw::do_progress(device.device);
+            if (need_progress) do_progress(device.device);
           }
           if (config.test_mode) {
             assert(sreq.device == device.device);
@@ -189,9 +251,9 @@ void worker_thread_fn(int worker_id)
         for (int j = 0; j < config.recv_window; ++j) {
           lcw::request_t rreq;
           while (!lcw::poll_cq(rcq, &rreq)) {
-            if (need_progress) lcw::do_progress(device.device);
+            if (need_progress) do_progress(device.device);
           }
-          do_computation(config.compute_us);
+          do_computation();
           if (config.test_mode) {
             assert(rreq.device == device.device ||
                    rreq.op == lcw::op_t::PUT_SIGNAL);
@@ -223,16 +285,16 @@ void worker_thread_fn(int worker_id)
                               get_tag(worker_id, i, j),
                               send_buffer + j * msg_size, msg_size, rcq,
                               reinterpret_cast<void*>(i))) {
-              if (need_progress) lcw::do_progress(device.device);
+              if (need_progress) do_progress(device.device);
             }
           }
         }
         for (int j = 0; j < config.send_window; ++j) {
           lcw::request_t rreq;
           while (!lcw::poll_cq(rcq, &rreq)) {
-            if (need_progress) lcw::do_progress(device.device);
+            if (need_progress) do_progress(device.device);
           }
-          do_computation(config.compute_us);
+          do_computation();
           if (config.test_mode) {
             assert(rreq.device == device.device);
             assert(rreq.length == msg_size);
@@ -270,13 +332,13 @@ void worker_thread_fn(int worker_id)
                   lcw::put(device.device, peer_rank, recv_buffer + j * msg_size,
                            msg_size, scq, reinterpret_cast<void*>(i));
             if (ret) break;
-            if (need_progress) lcw::do_progress(device.device);
+            if (need_progress) do_progress(device.device);
           }
         }
         for (int j = 0; j < config.recv_window; ++j) {
           lcw::request_t sreq;
           while (!lcw::poll_cq(scq, &sreq)) {
-            if (need_progress) lcw::do_progress(device.device);
+            if (need_progress) do_progress(device.device);
           }
           if (config.test_mode) {
             assert(sreq.device == device.device);
@@ -307,8 +369,11 @@ void worker_thread_fn(int worker_id)
                 << "Bandwidth (MB/s): " << bandwidth / 1e6 << std::endl;
     }
   }
-  lcw::free_cq(scq);
-  if (config.op == lcw::op_t::SEND) lcw::free_cq(rcq);
+  if (!config.use_shared_cq) {
+    lcw::free_cq(scq);
+    if (config.op == lcw::op_t::SEND) lcw::free_cq(rcq);
+  }
+  if (rand_generator) delete rand_generator;
 }
 
 void progress_thread_fn(int progress_id)
@@ -354,6 +419,12 @@ int main(int argc, char* argv[])
                       &config.recv_window);
   LCT_args_parser_add(argsParser, "compute-us", required_argument,
                       &config.compute_us);
+  LCT_args_parser_add(argsParser, "compute-us-std", required_argument,
+                      &config.compute_us_std);
+  LCT_args_parser_add(argsParser, "max-progress-steps", required_argument,
+                      &config.max_progress_steps);
+  LCT_args_parser_add(argsParser, "use-shared-cq", required_argument,
+                      &config.use_shared_cq);
   LCT_args_parser_parse(argsParser, argc, argv);
 
   lcw::initialize();
@@ -373,6 +444,10 @@ int main(int argc, char* argv[])
   }
   tbarrier_all = LCT_tbarrier_alloc(config.nthreads);
   tbarrier_worker = LCT_tbarrier_alloc(config.nthreads - config.nprgthreads);
+  if (config.use_shared_cq) {
+    shared_scq = lcw::alloc_cq();
+    shared_rcq = lcw::alloc_cq();
+  }
   if (config.nthreads == 1) {
     worker_thread_fn(0);
   } else {
@@ -403,9 +478,14 @@ int main(int argc, char* argv[])
       t.join();
     }
   }
+  if (config.use_shared_cq) {
+    lcw::free_cq(shared_scq);
+    lcw::free_cq(shared_rcq);
+  }
   for (auto& device : devices) {
     lcw::free_device(device.device);
-    if (config.op == lcw::op_t::PUT) lcw::free_cq(device.put_cq);
+    if (config.op == lcw::op_t::PUT && !config.use_shared_cq)
+      lcw::free_cq(device.put_cq);
   }
   lcw::finalize();
   return EXIT_SUCCESS;
