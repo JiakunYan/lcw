@@ -33,7 +33,6 @@ struct Config {
   int compute_us = 0;
   int compute_us_std = 0;
   int max_progress_steps = 1000;
-  int use_shared_cq = 0;
 };
 
 const size_t NPROCESSORS = sysconf(_SC_NPROCESSORS_ONLN);
@@ -48,8 +47,6 @@ Config config;
 static std::atomic<bool> progress_thread_stop(false);
 LCT_tbarrier_t tbarrier_all;
 LCT_tbarrier_t tbarrier_worker;
-lcw::comp_t shared_scq;
-lcw::comp_t shared_rcq;
 
 // random
 struct rand_generator_t {
@@ -69,11 +66,19 @@ struct uniform_rand_generator_t : rand_generator_t {
 struct normal_rand_generator_t : rand_generator_t {
   std::mt19937 gen;
   std::normal_distribution<double> d;
-  normal_rand_generator_t(int mean, int std)
-      : gen(std::random_device()()), d(mean, std)
+  int mean;
+  int std;
+  normal_rand_generator_t(int mean_, int std_)
+      : gen(std::random_device()()), d(mean_, std_), mean(mean_), std(std_)
   {
   }
-  int get() { return static_cast<int>(d(gen)); }
+  int get()
+  {
+    int ret = static_cast<int>(d(gen));
+    if (ret < mean - 3 * std) ret = mean - 3 * std;
+    if (ret > mean + 3 * std) ret = mean + 3 * std;
+    return ret;
+  }
 };
 __thread rand_generator_t* rand_generator = nullptr;
 
@@ -98,11 +103,7 @@ device_t& get_device(int worker_id)
       if (config.op == lcw::op_t::SEND)
         devices[device_idx].device = lcw::alloc_device();
       else {
-        if (config.use_shared_cq) {
-          devices[device_idx].put_cq = shared_rcq;
-        } else {
-          devices[device_idx].put_cq = lcw::alloc_cq();
-        }
+        devices[device_idx].put_cq = lcw::alloc_cq();
         devices[device_idx].device =
             lcw::alloc_device(config.max_size, devices[device_idx].put_cq);
       }
@@ -168,16 +169,11 @@ void worker_thread_fn(int worker_id)
   bool need_progress = config.nprgthreads == 0;
   int nworkers = config.nthreads - config.nprgthreads;
   lcw::comp_t scq, rcq;
-  if (config.use_shared_cq) {
-    scq = shared_scq;
-    rcq = shared_rcq;
-  } else {
-    scq = lcw::alloc_cq();
-    if (config.op == lcw::op_t::SEND)
-      rcq = lcw::alloc_cq();
-    else
-      rcq = device.put_cq;
-  }
+  scq = lcw::alloc_cq();
+  if (config.op == lcw::op_t::SEND)
+    rcq = lcw::alloc_cq();
+  else
+    rcq = device.put_cq;
 
   for (int msg_size = config.min_size; msg_size <= config.max_size;
        msg_size *= 2) {
@@ -369,10 +365,8 @@ void worker_thread_fn(int worker_id)
                 << "Bandwidth (MB/s): " << bandwidth / 1e6 << std::endl;
     }
   }
-  if (!config.use_shared_cq) {
-    lcw::free_cq(scq);
-    if (config.op == lcw::op_t::SEND) lcw::free_cq(rcq);
-  }
+  lcw::free_cq(scq);
+  if (config.op == lcw::op_t::SEND) lcw::free_cq(rcq);
   if (rand_generator) delete rand_generator;
 }
 
@@ -423,8 +417,6 @@ int main(int argc, char* argv[])
                       &config.compute_us_std);
   LCT_args_parser_add(argsParser, "max-progress-steps", required_argument,
                       &config.max_progress_steps);
-  LCT_args_parser_add(argsParser, "use-shared-cq", required_argument,
-                      &config.use_shared_cq);
   LCT_args_parser_parse(argsParser, argc, argv);
 
   lcw::initialize();
@@ -444,10 +436,6 @@ int main(int argc, char* argv[])
   }
   tbarrier_all = LCT_tbarrier_alloc(config.nthreads);
   tbarrier_worker = LCT_tbarrier_alloc(config.nthreads - config.nprgthreads);
-  if (config.use_shared_cq) {
-    shared_scq = lcw::alloc_cq();
-    shared_rcq = lcw::alloc_cq();
-  }
   if (config.nthreads == 1) {
     worker_thread_fn(0);
   } else {
@@ -478,14 +466,9 @@ int main(int argc, char* argv[])
       t.join();
     }
   }
-  if (config.use_shared_cq) {
-    lcw::free_cq(shared_scq);
-    lcw::free_cq(shared_rcq);
-  }
   for (auto& device : devices) {
     lcw::free_device(device.device);
-    if (config.op == lcw::op_t::PUT && !config.use_shared_cq)
-      lcw::free_cq(device.put_cq);
+    if (config.op == lcw::op_t::PUT) lcw::free_cq(device.put_cq);
   }
   lcw::finalize();
   return EXIT_SUCCESS;
