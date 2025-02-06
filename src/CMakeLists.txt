@@ -8,6 +8,7 @@ target_include_directories(
          $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
          $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
+# LCI
 option(LCW_TRY_ENABLE_BACKEND_LCI "whether to enable the LCI backend" ON)
 
 find_package(
@@ -21,7 +22,9 @@ find_package(
   lib/cmake
   lib64/cmake)
 target_link_libraries(lcw PRIVATE LCI::LCT)
-if(LCW_TRY_ENABLE_BACKEND_LCI AND NOT LCI_WITH_LCT_ONLY)
+if(LCW_TRY_ENABLE_BACKEND_LCI
+   AND NOT LCI_WITH_LCT_ONLY
+   AND LCI_VERSION VERSION_LESS 2.0.0)
   set(LCW_ENABLE_BACKEND_LCI ON)
   target_link_libraries(lcw PRIVATE LCI::LCI)
   target_sources(lcw PRIVATE backend/lci/backend_lci.cpp)
@@ -29,6 +32,19 @@ else()
   message(WARNING "LCI is not found. The LCI backend if not enabled.")
 endif()
 
+# LCI2
+option(LCW_TRY_ENABLE_BACKEND_LCI2 "whether to enable the LCI2 backend" ON)
+if(LCW_TRY_ENABLE_BACKEND_LCI2
+   AND NOT LCI_WITH_LCT_ONLY
+   AND LCI_VERSION VERSION_GREATER_EQUAL 2.0.0)
+  set(LCW_ENABLE_BACKEND_LCI2 ON)
+  target_link_libraries(lcw PRIVATE LCI::LCI)
+  target_sources(lcw PRIVATE backend/lci2/backend_lci2.cpp)
+else()
+  message(WARNING "LCI2 is not found. The LCI2 backend if not enabled.")
+endif()
+
+# MPI
 option(LCW_TRY_ENABLE_BACKEND_MPI "whether to enable the MPI backend" ON)
 
 if(LCW_TRY_ENABLE_BACKEND_MPI)

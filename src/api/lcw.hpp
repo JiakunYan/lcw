@@ -55,6 +55,7 @@ enum class backend_t {
   AUTO,
   LCI,
   MPI,
+  LCI2,
 };
 
 struct device_opaque_t;

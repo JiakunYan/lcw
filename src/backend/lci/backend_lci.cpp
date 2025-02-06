@@ -13,7 +13,7 @@ int64_t backend_lci_t::get_rank() { return LCI_RANK; }
 
 int64_t backend_lci_t::get_nranks() { return LCI_NUM_PROCESSES; }
 
-namespace lci
+namespace backend_lci
 {
 struct device_t {
   int id;
@@ -21,14 +21,14 @@ struct device_t {
   LCI_endpoint_t ep;
 };
 std::atomic<int> g_ndevices(0);
-}  // namespace lci
+}  // namespace backend_lci
 
 device_t backend_lci_t::alloc_device(int64_t max_put_length, comp_t put_comp)
 {
   LCW_Assert(max_put_length <= LCI_MEDIUM_SIZE,
              "the put length is too large!\n");
-  auto* device_p = new lci::device_t;
-  device_p->id = mpi::g_ndevices++;
+  auto* device_p = new backend_lci::device_t;
+  device_p->id = backend_lci::g_ndevices++;
   if (device_p->id == 0) {
     device_p->device = LCI_UR_DEVICE;
   } else {
@@ -52,14 +52,14 @@ device_t backend_lci_t::alloc_device(int64_t max_put_length, comp_t put_comp)
 
 void backend_lci_t::free_device(device_t device)
 {
-  auto* device_p = reinterpret_cast<lci::device_t*>(device);
+  auto* device_p = reinterpret_cast<backend_lci::device_t*>(device);
   LCI_SAFECALL(LCI_endpoint_free(&device_p->ep));
   if (device_p->id != 0) LCI_SAFECALL(LCI_device_free(&device_p->device));
 }
 
 bool backend_lci_t::do_progress(device_t device)
 {
-  auto* device_p = reinterpret_cast<lci::device_t*>(device);
+  auto* device_p = reinterpret_cast<backend_lci::device_t*>(device);
   LCI_progress(device_p->device);
   return false;
 }
@@ -117,7 +117,7 @@ bool backend_lci_t::poll_cq(comp_t completion, request_t* request)
 bool backend_lci_t::send(device_t device, rank_t rank, tag_t tag, void* buf,
                          int64_t length, comp_t completion, void* user_context)
 {
-  auto* device_p = reinterpret_cast<lci::device_t*>(device);
+  auto* device_p = reinterpret_cast<backend_lci::device_t*>(device);
   auto cq = static_cast<LCI_comp_t>(completion);
   auto* req_p = new request_t;
   *req_p = {
@@ -159,7 +159,7 @@ bool backend_lci_t::send(device_t device, rank_t rank, tag_t tag, void* buf,
 bool backend_lci_t::recv(device_t device, rank_t rank, tag_t tag, void* buf,
                          int64_t length, comp_t completion, void* user_context)
 {
-  auto* device_p = reinterpret_cast<lci::device_t*>(device);
+  auto* device_p = reinterpret_cast<backend_lci::device_t*>(device);
   auto cq = static_cast<LCI_comp_t>(completion);
   auto* req_p = new request_t;
   *req_p = {
@@ -199,7 +199,7 @@ bool backend_lci_t::recv(device_t device, rank_t rank, tag_t tag, void* buf,
 bool backend_lci_t::put(device_t device, rank_t rank, void* buf, int64_t length,
                         comp_t completion, void* user_context)
 {
-  auto* device_p = reinterpret_cast<lci::device_t*>(device);
+  auto* device_p = reinterpret_cast<backend_lci::device_t*>(device);
   auto cq = static_cast<LCI_comp_t>(completion);
   auto* req_p = new request_t;
   *req_p = {

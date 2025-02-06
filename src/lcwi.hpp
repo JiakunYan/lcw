@@ -26,5 +26,8 @@
 #include "backend/mpi/comp_manager/manager_req.hpp"
 #include "backend/mpi/comp_manager/manager_cont.hpp"
 #endif
+#ifdef LCW_ENABLE_BACKEND_LCI2
+#include "backend/lci2/backend_lci2.hpp"
+#endif
 
 #endif  // LCW_LCWI_HPP
