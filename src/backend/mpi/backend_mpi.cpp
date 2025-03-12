@@ -34,6 +34,11 @@ void backend_mpi_t::initialize()
         {"array_atomic_basic", LCT_QUEUE_ARRAY_ATOMIC_BASIC},
         {"array_mutex", LCT_QUEUE_ARRAY_MUTEX},
         {"std_mutex", LCT_QUEUE_STD_MUTEX},
+        {"ms", LCT_QUEUE_MS},
+        {"lcrq", LCT_QUEUE_LCRQ},
+        {"lprq", LCT_QUEUE_LPRQ},
+        {"faaarray", LCT_QUEUE_FAAARRAY},
+        {"lazy_index", LCT_QUEUE_LAZY_INDEX},
     };
     bool succeed = LCT_str_int_search(
         dict, sizeof(dict) / sizeof(dict[0]), getenv("LCW_MPI_CQ_TYPE"),

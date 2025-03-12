@@ -44,7 +44,7 @@ class backend_mpi_t : public backend_base_t
 namespace mpi
 {
 struct config_t {
-  LCT_queue_type_t cq_type = LCT_QUEUE_ARRAY_ATOMIC_FAA;
+  LCT_queue_type_t cq_type = LCT_QUEUE_LCRQ;
   int default_max_put = 8192;
   int default_cq_length = 65536;
   enum class comp_type_t {
