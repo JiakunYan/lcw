@@ -95,9 +95,9 @@ bool poll_cq(comp_t completion, request_t* request)
   bool ret = backend_p->poll_cq(completion, request);
   if (ret) {
     LCW_Log(LCW_log_level_t::LCW_LOG_TRACE, "comm",
-            "poll_cq(%p, {%p, %ld, %ld, %p, %ld, %p})\n", completion,
-            request->device, request->rank, request->tag, request->buffer,
-            request->length, request->user_context);
+            "poll_cq(%p, {%d, %p, %ld, %ld, %p, %ld, %p})\n", completion,
+            request->op, request->device, request->rank, request->tag,
+            request->buffer, request->length, request->user_context);
     pcounter::add(pcounter::comp_consume);
   }
   return ret;

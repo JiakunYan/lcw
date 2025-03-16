@@ -20,7 +20,6 @@ int64_t backend_lci2_t::get_nranks() { return lci::get_nranks(); }
 struct device_impl_t {
   int id;
   lci::device_t device;
-  lci::endpoint_t ep;
   lci::rcomp_t rcomp;
   device_impl_t() = default;
 };
@@ -35,7 +34,6 @@ device_t backend_lci2_t::alloc_device(int64_t max_put_length, comp_t put_comp)
   auto* device_p = new device_impl_t;
   device_p->id = g_ndevices++;
   device_p->device = lci::alloc_device();
-  device_p->ep = lci::alloc_endpoint_x().device(device_p->device)();
   lci::comp_t cq(static_cast<void*>(put_comp));
   device_p->rcomp = lci::register_rcomp(cq);
 
@@ -47,7 +45,6 @@ void backend_lci2_t::free_device(device_t device)
 {
   auto device_p = reinterpret_cast<device_impl_t*>(device);
   lci::deregister_rcomp(device_p->rcomp);
-  lci::free_endpoint(&device_p->ep);
   lci::free_device(&device_p->device);
 }
 
@@ -114,7 +111,7 @@ bool backend_lci2_t::send(device_t device, rank_t rank, tag_t tag, void* buf,
       .user_context = user_context,
   };
   lci::status_t status = lci::post_send_x(rank, buf, length, tag, cq)
-                             .endpoint(device_p->ep)
+                             .device(device_p->device)
                              .user_context(req_p)
                              .allow_ok(false)();
 
@@ -142,7 +139,7 @@ bool backend_lci2_t::recv(device_t device, rank_t rank, tag_t tag, void* buf,
       .user_context = user_context,
   };
   lci::status_t status = lci::post_recv_x(rank, buf, length, tag, cq)
-                             .endpoint(device_p->ep)
+                             .device(device_p->device)
                              .user_context(req_p)
                              .allow_ok(false)();
 
@@ -170,7 +167,7 @@ bool backend_lci2_t::put(device_t device, rank_t rank, void* buf,
       .user_context = user_context,
   };
   lci::status_t status = lci::post_am_x(rank, buf, length, cq, device_p->rcomp)
-                             .endpoint(device_p->ep)
+                             .device(device_p->device)
                              .user_context(req_p)
                              .allow_ok(false)();
 

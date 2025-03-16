@@ -16,7 +16,7 @@ class Lcw(CMakePackage):
         except ValueError:
             return val == 'auto'
 
-    variant('backend', default='mpi,lci', values=('mpi', 'lci'), multi=True,
+    variant('backend', default='mpi,lci,lci2', values=('mpi', 'lci', "lci2"), multi=True,
             description='Communication backend')
     variant('shared', default=True,  description='Build with shared libraries')
     variant('examples', default=True, description='Build LCW examples')
@@ -51,6 +51,13 @@ class Lcw(CMakePackage):
             args.append(arg)
         else:
             arg = self.define('LCW_TRY_ENABLE_BACKEND_LCI', False)
+            args.append(arg)
+
+        if self.spec.satisfies("backend=lci2"):
+            arg = self.define('LCW_TRY_ENABLE_BACKEND_LCI2', True)
+            args.append(arg)
+        else:
+            arg = self.define('LCW_TRY_ENABLE_BACKEND_LCI2', False)
             args.append(arg)
 
         if self.spec.variants['cache-line'].value != 'auto':
