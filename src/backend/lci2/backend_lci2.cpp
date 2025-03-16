@@ -92,6 +92,20 @@ bool backend_lci2_t::poll_cq(comp_t completion, request_t* request)
       request->length = buffer.size;
     }
   }
+  switch (request->op) {
+    case op_t::SEND:
+      pcounter::add(pcounter::send_end);
+      break;
+    case op_t::RECV:
+      pcounter::add(pcounter::recv_end);
+      break;
+    case op_t::PUT:
+      pcounter::add(pcounter::put_end);
+      break;
+    case op_t::PUT_SIGNAL:
+      pcounter::add(pcounter::put_signal);
+      break;
+  }
   return true;
 }
 
