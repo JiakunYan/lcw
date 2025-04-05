@@ -27,15 +27,18 @@ std::atomic<int> g_ndevices(0);
 
 device_t backend_lci2_t::alloc_device(int64_t max_put_length, comp_t put_comp)
 {
-  size_t pbuffer_size = lci::get_default_packet_pool().get_attr_pbuffer_size();
-  if (max_put_length <= pbuffer_size) {
-    LCW_Warn("the put length exceeds the eager protocol threshold!\n");
+  size_t pbuffer_size = lci::get_max_bcopy_size();
+  if (max_put_length > pbuffer_size) {
+    LCW_Warn(
+        "the put length exceeds the eager protocol threshold! (%lu > %lu)\n",
+        max_put_length, pbuffer_size);
   }
+
   auto* device_p = new device_impl_t;
   device_p->id = g_ndevices++;
-  device_p->device = lci::alloc_device();
   lci::comp_t cq(static_cast<void*>(put_comp));
   device_p->rcomp = lci::register_rcomp(cq);
+  device_p->device = lci::alloc_device();
 
   auto device = reinterpret_cast<device_t>(device_p);
   return device;
