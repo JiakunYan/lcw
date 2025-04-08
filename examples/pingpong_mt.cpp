@@ -48,6 +48,8 @@ static std::atomic<bool> progress_thread_stop(false);
 LCT_tbarrier_t tbarrier_all;
 LCT_tbarrier_t tbarrier_worker;
 
+std::atomic<int> g_device_sequence_control(0);
+
 // random
 struct rand_generator_t {
   virtual int get() = 0;
@@ -89,46 +91,51 @@ int get_tag(int worker_id, int iter, int idx)
   return worker_id + idx * nworkers;
 }
 
-device_t& get_device(int worker_id)
-{
-  assert(devices.size() == config.ndevices);
-  int nworkers = config.nthreads - config.nprgthreads;
-  int nworkers_per_device = (nworkers + devices.size() - 1) / devices.size();
-  int device_idx = worker_id / nworkers_per_device;
-  assert(devices.size() > device_idx);
-  // We need to allocate the devices sequentially in the same order
-  for (int i = 0; i < devices.size(); ++i) {
-    if (worker_id % nworkers_per_device == 0 && device_idx == i) {
-      // allocate the device
-      if (config.op == lcw::op_t::SEND)
-        devices[device_idx].device = lcw::alloc_device();
-      else {
-        devices[device_idx].put_cq = lcw::alloc_cq();
-        devices[device_idx].device =
-            lcw::alloc_device(config.max_size, devices[device_idx].put_cq);
-      }
-      LCT_tbarrier_arrive_and_wait(tbarrier_worker);
-    } else {
-      // wait for the device to be allocated
-      LCT_tbarrier_arrive_and_wait(tbarrier_worker);
-    }
-  }
-  // if (worker_id % nworkers_per_device == 0) {
-  //   // allocate the device
-  //   if (config.op == lcw::op_t::SEND)
-  //     devices[device_idx].device = lcw::alloc_device();
-  //   else {
-  //     devices[device_idx].put_cq = lcw::alloc_cq();
-  //     devices[device_idx].device = lcw::alloc_device(config.max_size,
-  //     devices[device_idx].put_cq);
-  //   }
-  //   LCT_tbarrier_arrive_and_wait(tbarrier_worker);
-  // } else {
-  //   // wait for the device to be allocated
-  //   LCT_tbarrier_arrive_and_wait(tbarrier_worker);
-  // }
-  return devices[device_idx];
-}
+
+// device_t& worker_alloc_device(int worker_id)
+// {
+//   assert(devices.size() == config.ndevices);
+//   int nworkers = config.nthreads - config.nprgthreads;
+//   int nworkers_per_device = (nworkers + devices.size() - 1) / devices.size();
+//   int device_idx = worker_id / nworkers_per_device;
+//   assert(devices.size() > device_idx);
+
+//   if (worker_id % nworkers_per_device == 0) {
+//     // This thread is responsible for allocating the device device_idx
+//     while (g_device_sequence_control != device_idx) continue;
+//     if (config.op == lcw::op_t::SEND)
+//       devices[device_idx].device = lcw::alloc_device();
+//     else {
+//       devices[device_idx].put_cq = lcw::alloc_cq();
+//       devices[device_idx].device =
+//           lcw::alloc_device(config.max_size, devices[device_idx].put_cq);
+//     }
+//     if (++g_device_sequence_control == devices.size()) g_device_sequence_control = 0;
+//   }
+//   LCT_tbarrier_arrive_and_wait(tbarrier_worker);
+
+//   // for (int i = 0; i < devices.size(); ++i) {
+//   //   if (worker_id % nworkers_per_device == 0 && device_idx == i) {
+//   //     // allocate the device
+//   //     if (config.op == lcw::op_t::SEND)
+//   //       devices[device_idx].device = lcw::alloc_device();
+//   //     else {
+//   //       devices[device_idx].put_cq = lcw::alloc_cq();
+//   //       devices[device_idx].device =
+//   //           lcw::alloc_device(config.max_size, devices[device_idx].put_cq);
+//   //     }
+//   //     LCT_tbarrier_arrive_and_wait(tbarrier_worker);
+//   //   } else {
+//   //     // wait for the device to be allocated
+//   //     LCT_tbarrier_arrive_and_wait(tbarrier_worker);
+//   //   }
+//   // }
+//   return devices[device_idx];
+// }
+
+// void worker_free_device(int worker_id)
+// {
+// }
 
 void do_computation()
 {
@@ -161,13 +168,31 @@ void worker_thread_fn(int worker_id)
         new normal_rand_generator_t(config.compute_us, config.compute_us_std);
   }
 
-  device_t& device = get_device(worker_id);
+  // allocate the devices
+  assert(devices.size() == config.ndevices);
+  int nworkers = config.nthreads - config.nprgthreads;
+  int nworkers_per_device = (nworkers + devices.size() - 1) / devices.size();
+  int device_idx = worker_id / nworkers_per_device;
+  assert(devices.size() > device_idx);
+  if (worker_id % nworkers_per_device == 0) {
+    // This thread is responsible for allocating the device device_idx
+    while (g_device_sequence_control != device_idx) continue;
+    if (config.op == lcw::op_t::SEND)
+      devices[device_idx].device = lcw::alloc_device();
+    else {
+      devices[device_idx].put_cq = lcw::alloc_cq();
+      devices[device_idx].device =
+          lcw::alloc_device(config.max_size, devices[device_idx].put_cq);
+    }
+    if (++g_device_sequence_control == devices.size()) g_device_sequence_control = 0;
+  }
   LCT_tbarrier_arrive_and_wait(tbarrier_all);
+  device_t& device = devices[device_idx];
+
   int64_t rank = lcw::get_rank();
   int64_t nranks = lcw::get_nranks();
   int64_t peer_rank = (rank + nranks / 2) % nranks;
   bool need_progress = config.nprgthreads == 0;
-  int nworkers = config.nthreads - config.nprgthreads;
   lcw::comp_t scq, rcq;
   scq = lcw::alloc_cq();
   if (config.op == lcw::op_t::SEND)
@@ -368,6 +393,24 @@ void worker_thread_fn(int worker_id)
   lcw::free_cq(scq);
   if (config.op == lcw::op_t::SEND) lcw::free_cq(rcq);
   if (rand_generator) delete rand_generator;
+
+  // free the devices
+  if (worker_id == 0)
+    progress_thread_stop = true;
+  LCT_tbarrier_arrive_and_wait(tbarrier_all);
+  if (worker_id % nworkers_per_device == 0) {
+    // free the device
+    while (g_device_sequence_control != device_idx) {
+      do_progress(device.device);
+    }
+    if (config.op == lcw::op_t::SEND)
+      lcw::free_device(device.device);
+    else {
+      lcw::free_cq(device.put_cq);
+      lcw::free_device(device.device);
+    }
+    if (++g_device_sequence_control == devices.size()) g_device_sequence_control = 0;
+  }
 }
 
 void progress_thread_fn(int progress_id)
@@ -383,6 +426,7 @@ void progress_thread_fn(int progress_id)
       lcw::do_progress(devices[device_idx].device);
     }
   }
+  LCT_tbarrier_arrive_and_wait(tbarrier_all);
 }
 
 int main(int argc, char* argv[])
@@ -465,10 +509,6 @@ int main(int argc, char* argv[])
     for (auto& t : progress_pool) {
       t.join();
     }
-  }
-  for (auto& device : devices) {
-    lcw::free_device(device.device);
-    if (config.op == lcw::op_t::PUT) lcw::free_cq(device.put_cq);
   }
   lcw::finalize();
   return EXIT_SUCCESS;
