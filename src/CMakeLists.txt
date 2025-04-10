@@ -62,4 +62,41 @@ if(LCW_TRY_ENABLE_BACKEND_MPI)
   endif()
 endif()
 
+# GASNet-EX
+option(LCW_TRY_ENABLE_BACKEND_GEX "whether to enable the MPI backend" ON)
+
+if(LCW_TRY_ENABLE_BACKEND_GEX)
+  set(LCW_USE_GASNET_MODULE
+      gasnet-ibv-par
+      CACHE STRING "Gasnet module to use")
+  option(LCW_USE_GASNET_NEED_MPI "Gasnet module needs MPI" ON)
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(gasnet IMPORTED_TARGET ${LCW_USE_GASNET_MODULE})
+  if(gasnet_FOUND)
+    if(LCW_USE_GASNET_NEED_MPI)
+      find_package(MPI REQUIRED)
+      target_include_directories(lcw PRIVATE MPI::MPI_CXX)
+    endif()
+
+    # fix a cmake bug when encountering multiple "--param <val>" options
+    # Reference:
+    # https://cmake.org/cmake/help/latest/command/target_compile_options.html#option-de-duplication
+    macro(fix_property TARGET PROPERTY)
+      get_target_property(PROPERTY_OLD ${TARGET} ${PROPERTY})
+      string(REPLACE "--param;" "SHELL:--param " PROPERTY_NEW "${PROPERTY_OLD}")
+      set_target_properties(${TARGET} PROPERTIES ${PROPERTY} "${PROPERTY_NEW}")
+      message(
+        STATUS "Fix ${TARGET} ${PROPERTY}: ${PROPERTY_OLD} -> ${PROPERTY_NEW}")
+    endmacro()
+    fix_property(PkgConfig::gasnet INTERFACE_COMPILE_OPTIONS)
+    fix_property(PkgConfig::gasnet INTERFACE_LINK_OPTIONS)
+
+    set(LCW_ENABLE_BACKEND_GEX ON)
+    target_link_libraries(lcw PRIVATE PkgConfig::gasnet)
+    target_sources(lcw PRIVATE backend/gex/backend_gex.cpp)
+  else()
+    message(WARNING "GASNet-EX is not found. The GEX backend if not enabled.")
+  endif()
+endif()
+
 add_subdirectory(api)

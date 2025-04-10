@@ -24,6 +24,8 @@ std::unique_ptr<backend_base_t> alloc_backend(backend_t backend)
         backend = backend_t::LCI;
       } else if (str == "lci2") {
         backend = backend_t::LCI2;
+      } else if (str == "gex") {
+        backend = backend_t::GEX;
       }
     }
   }
@@ -45,6 +47,12 @@ std::unique_ptr<backend_base_t> alloc_backend(backend_t backend)
       return std::make_unique<backend_lci2_t>();
 #else
       LCW_Assert(false, "The LCI2 backend is not available\n");
+#endif
+    case backend_t::GEX:
+#ifdef LCW_ENABLE_BACKEND_GEX
+      return std::make_unique<backend_gex_t>();
+#else
+      LCW_Assert(false, "The GEX backend is not available\n");
 #endif
     default:
       LCW_Assert(false, "Unknown backend %d\n", backend);

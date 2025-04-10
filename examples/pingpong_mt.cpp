@@ -91,7 +91,6 @@ int get_tag(int worker_id, int iter, int idx)
   return worker_id + idx * nworkers;
 }
 
-
 // device_t& worker_alloc_device(int worker_id)
 // {
 //   assert(devices.size() == config.ndevices);
@@ -110,7 +109,8 @@ int get_tag(int worker_id, int iter, int idx)
 //       devices[device_idx].device =
 //           lcw::alloc_device(config.max_size, devices[device_idx].put_cq);
 //     }
-//     if (++g_device_sequence_control == devices.size()) g_device_sequence_control = 0;
+//     if (++g_device_sequence_control == devices.size())
+//     g_device_sequence_control = 0;
 //   }
 //   LCT_tbarrier_arrive_and_wait(tbarrier_worker);
 
@@ -122,7 +122,8 @@ int get_tag(int worker_id, int iter, int idx)
 //   //     else {
 //   //       devices[device_idx].put_cq = lcw::alloc_cq();
 //   //       devices[device_idx].device =
-//   //           lcw::alloc_device(config.max_size, devices[device_idx].put_cq);
+//   //           lcw::alloc_device(config.max_size,
+//   devices[device_idx].put_cq);
 //   //     }
 //   //     LCT_tbarrier_arrive_and_wait(tbarrier_worker);
 //   //   } else {
@@ -184,7 +185,8 @@ void worker_thread_fn(int worker_id)
       devices[device_idx].device =
           lcw::alloc_device(config.max_size, devices[device_idx].put_cq);
     }
-    if (++g_device_sequence_control == devices.size()) g_device_sequence_control = 0;
+    if (++g_device_sequence_control == devices.size())
+      g_device_sequence_control = 0;
   }
   LCT_tbarrier_arrive_and_wait(tbarrier_all);
   device_t& device = devices[device_idx];
@@ -395,8 +397,7 @@ void worker_thread_fn(int worker_id)
   if (rand_generator) delete rand_generator;
 
   // free the devices
-  if (worker_id == 0)
-    progress_thread_stop = true;
+  if (worker_id == 0) progress_thread_stop = true;
   LCT_tbarrier_arrive_and_wait(tbarrier_all);
   if (worker_id % nworkers_per_device == 0) {
     // free the device
@@ -409,7 +410,8 @@ void worker_thread_fn(int worker_id)
       lcw::free_cq(device.put_cq);
       lcw::free_device(device.device);
     }
-    if (++g_device_sequence_control == devices.size()) g_device_sequence_control = 0;
+    if (++g_device_sequence_control == devices.size())
+      g_device_sequence_control = 0;
   }
 }
 

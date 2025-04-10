@@ -29,5 +29,8 @@
 #ifdef LCW_ENABLE_BACKEND_LCI2
 #include "backend/lci2/backend_lci2.hpp"
 #endif
+#ifdef LCW_ENABLE_BACKEND_GEX
+#include "backend/gex/backend_gex.hpp"
+#endif
 
 #endif  // LCW_LCWI_HPP
