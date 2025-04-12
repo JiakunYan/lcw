@@ -204,6 +204,12 @@ LCW_API bool put(device_t device, rank_t rank, void* buf, int64_t length,
  */
 LCW_API tag_t get_max_tag(device_t device);
 
+/**
+ * @ingroup LCW_COMM
+ * @brief barrier for all ranks
+ */
+LCW_API void barrier(device_t device);
+
 // Custom spinlock
 struct custom_spinlock_op_t {
   std::string name = "Unknown";

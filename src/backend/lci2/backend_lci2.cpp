@@ -201,4 +201,10 @@ tag_t backend_lci2_t::get_max_tag(device_t device)
   return lci::get_g_runtime().get_attr_max_imm_tag();
 }
 
+void backend_lci2_t::barrier(device_t device)
+{
+  auto device_p = reinterpret_cast<device_impl_t*>(device);
+  lci::barrier_x().device(device_p->device)();
+}
+
 }  // namespace lcw

@@ -39,6 +39,7 @@ class backend_mpi_t : public backend_base_t
   bool put(device_t device, rank_t rank, void* buf, int64_t length,
            comp_t completion, void* user_context) override;
   tag_t get_max_tag(device_t device) override;
+  void barrier(device_t device) override;
 };
 
 namespace mpi

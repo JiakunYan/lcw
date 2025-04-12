@@ -169,4 +169,11 @@ tag_t get_max_tag(device_t device)
              "LCW has not been initialized or has been finalized!\n");
   return backend_p->get_max_tag(device);
 }
+
+void barrier(device_t device)
+{
+  LCW_Assert(backend_p != nullptr,
+             "LCW has not been initialized or has been finalized!\n");
+  backend_p->barrier(device);
+}
 }  // namespace lcw

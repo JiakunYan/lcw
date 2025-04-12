@@ -26,6 +26,7 @@ class backend_base_t
   virtual bool put(device_t device, rank_t rank, void* buf, int64_t length,
                    comp_t completion, void* user_context) = 0;
   virtual tag_t get_max_tag(device_t device) = 0;
+  virtual void barrier(device_t device) = 0;
 };
 
 std::unique_ptr<backend_base_t> alloc_backend(backend_t backend);

@@ -448,4 +448,10 @@ tag_t backend_mpi_t::get_max_tag(device_t device)
   return device_p->max_tag_2sided;
 }
 
+void backend_mpi_t::barrier(device_t device)
+{
+  auto* device_p = reinterpret_cast<mpi::device_t*>(device);
+  MPI_SAFECALL(MPI_Barrier(device_p->comm));
+}
+
 }  // namespace lcw

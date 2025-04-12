@@ -254,4 +254,10 @@ bool backend_lci_t::put(device_t device, rank_t rank, void* buf, int64_t length,
 
 tag_t backend_lci_t::get_max_tag(device_t device) { return LCI_MAX_TAG; }
 
+void backend_lci_t::barrier(device_t device)
+{
+  auto* device_p = reinterpret_cast<backend_lci::device_t*>(device);
+  LCI_SAFECALL(LCI_barrier());
+}
+
 }  // namespace lcw

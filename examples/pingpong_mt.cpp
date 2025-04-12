@@ -91,53 +91,6 @@ int get_tag(int worker_id, int iter, int idx)
   return worker_id + idx * nworkers;
 }
 
-// device_t& worker_alloc_device(int worker_id)
-// {
-//   assert(devices.size() == config.ndevices);
-//   int nworkers = config.nthreads - config.nprgthreads;
-//   int nworkers_per_device = (nworkers + devices.size() - 1) / devices.size();
-//   int device_idx = worker_id / nworkers_per_device;
-//   assert(devices.size() > device_idx);
-
-//   if (worker_id % nworkers_per_device == 0) {
-//     // This thread is responsible for allocating the device device_idx
-//     while (g_device_sequence_control != device_idx) continue;
-//     if (config.op == lcw::op_t::SEND)
-//       devices[device_idx].device = lcw::alloc_device();
-//     else {
-//       devices[device_idx].put_cq = lcw::alloc_cq();
-//       devices[device_idx].device =
-//           lcw::alloc_device(config.max_size, devices[device_idx].put_cq);
-//     }
-//     if (++g_device_sequence_control == devices.size())
-//     g_device_sequence_control = 0;
-//   }
-//   LCT_tbarrier_arrive_and_wait(tbarrier_worker);
-
-//   // for (int i = 0; i < devices.size(); ++i) {
-//   //   if (worker_id % nworkers_per_device == 0 && device_idx == i) {
-//   //     // allocate the device
-//   //     if (config.op == lcw::op_t::SEND)
-//   //       devices[device_idx].device = lcw::alloc_device();
-//   //     else {
-//   //       devices[device_idx].put_cq = lcw::alloc_cq();
-//   //       devices[device_idx].device =
-//   //           lcw::alloc_device(config.max_size,
-//   devices[device_idx].put_cq);
-//   //     }
-//   //     LCT_tbarrier_arrive_and_wait(tbarrier_worker);
-//   //   } else {
-//   //     // wait for the device to be allocated
-//   //     LCT_tbarrier_arrive_and_wait(tbarrier_worker);
-//   //   }
-//   // }
-//   return devices[device_idx];
-// }
-
-// void worker_free_device(int worker_id)
-// {
-// }
-
 void do_computation()
 {
   if (config.compute_us == 0) return;
@@ -212,7 +165,11 @@ void worker_thread_fn(int worker_id)
     ret = posix_memalign((void**)&recv_buffer, PAGESIZE,
                          msg_size * config.recv_window);
     assert(ret == 0);
-    LCT_tbarrier_arrive_and_wait(tbarrier_worker);
+    LCT_tbarrier_arrive_and_wait(tbarrier_all);
+    if (worker_id == 0) {
+      lcw::barrier(device.device);
+    }
+    LCT_tbarrier_arrive_and_wait(tbarrier_all);
     auto start_time = LCT_now();
     for (int i = 0; i < config.niters; ++i) {
       if (nranks == 1 || rank < nranks / 2) {
@@ -376,7 +333,11 @@ void worker_thread_fn(int worker_id)
         }
       }
     }
-    LCT_tbarrier_arrive_and_wait(tbarrier_worker);
+    LCT_tbarrier_arrive_and_wait(tbarrier_all);
+    if (worker_id == 0) {
+      lcw::barrier(device.device);
+    }
+    LCT_tbarrier_arrive_and_wait(tbarrier_all);
     auto total_time = LCT_now() - start_time;
     double total_time_s = LCT_time_to_s(total_time);
     double msg_rate = config.niters * nworkers * nranks * config.send_window /

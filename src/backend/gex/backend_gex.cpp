@@ -41,6 +41,12 @@ struct device_impl_t {
 };
 
 std::vector<device_impl_t*> g_devices;
+
+void barrier()
+{
+  gex_Event_t event = gex_Coll_BarrierNB(tm, 0);
+  gex_Event_Wait(event);
+}
 }  // namespace gex_detail
 
 void gex_reqhandler(gex_Token_t token, void* am_buf, size_t nbytes,
@@ -68,11 +74,7 @@ void gex_reqhandler(gex_Token_t token, void* am_buf, size_t nbytes,
   LCT_queue_push(device->cq, req_p);
 }
 
-void barrier(bool (*do_something)() = nullptr)
-{
-  gex_Event_t event = gex_Coll_BarrierNB(gex_detail::tm, 0);
-  gex_Event_Wait(event);
-}
+void backend_gex_t::barrier(device_t device) { gex_detail::barrier(); }
 
 void backend_gex_t::initialize()
 {
@@ -98,7 +100,7 @@ void backend_gex_t::initialize()
 
 void backend_gex_t::finalize()
 {
-  barrier();
+  gex_detail::barrier();
   gex_detail::finalized = true;
   gasnet_exit(0);
 }
