@@ -1,6 +1,7 @@
 #include <vector>
 #include <cstring>
 #include <limits>
+#include <stdexcept>
 #include "gasnetex.h"
 #include "gasnet_coll.h"
 #include "lcwi.hpp"

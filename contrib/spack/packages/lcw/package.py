@@ -16,7 +16,7 @@ class Lcw(CMakePackage):
         except ValueError:
             return val == 'auto'
 
-    variant('backend', default='mpi,lci,lci2', values=('mpi', 'lci', "lci2"), multi=True,
+    variant('backend', default='mpi,lci,lci2', values=('mpi', 'lci', "lci2", "gex"), multi=True,
             description='Communication backend')
     variant('shared', default=True,  description='Build with shared libraries')
     variant('examples', default=True, description='Build LCW examples')
@@ -25,8 +25,16 @@ class Lcw(CMakePackage):
     variant('debug', default=False, description='Enable debug mode')
     variant('pcounter', default=False,
             description='Use performance counter')
+    variant(
+        "gex-module",
+        default="gasnet-ibv-par",
+        description="The module to use with GASNet-EX",
+        when="backend=gex",
+    )
+    variant("gex-with-mpi", default=False, description="Enable MPI support in GASNet-EX")
 
     depends_on("mpi", when="backend=mpi")
+    depends_on("gasnet", when="backend=gex")
     depends_on("lci")
     depends_on("c", type="build")
     depends_on("cxx", type="build")
@@ -58,6 +66,16 @@ class Lcw(CMakePackage):
             args.append(arg)
         else:
             arg = self.define('LCW_TRY_ENABLE_BACKEND_LCI2', False)
+            args.append(arg)
+
+        if self.spec.satisfies("backend=gex"):
+            args += [
+                self.define('LCW_TRY_ENABLE_BACKEND_GEX', True),
+                self.define_from_variant("LCW_USE_GASNET_MODULE", "gex-module"),
+                self.define_from_variant("LCW_USE_GASNET_NEED_MPI", "gex-with-mpi"),
+            ]
+        else:
+            arg = self.define('LCW_TRY_ENABLE_BACKEND_GEX', False)
             args.append(arg)
 
         if self.spec.variants['cache-line'].value != 'auto':
