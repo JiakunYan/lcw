@@ -13,9 +13,9 @@ void backend_lci2_t::initialize()
 
 void backend_lci2_t::finalize() { lci::g_runtime_fina(); }
 
-int64_t backend_lci2_t::get_rank() { return lci::get_rank(); }
+int64_t backend_lci2_t::get_rank() { return lci::get_rank_me(); }
 
-int64_t backend_lci2_t::get_nranks() { return lci::get_nranks(); }
+int64_t backend_lci2_t::get_nranks() { return lci::get_rank_n(); }
 
 struct device_impl_t {
   int id;
@@ -55,7 +55,7 @@ bool backend_lci2_t::do_progress(device_t device)
 {
   auto* device_p = reinterpret_cast<device_impl_t*>(device);
   auto ret = lci::progress_x().device(device_p->device)();
-  return ret.is_ok();
+  return ret.is_done();
 }
 
 comp_t backend_lci2_t::alloc_cq()
@@ -130,7 +130,7 @@ bool backend_lci2_t::send(device_t device, rank_t rank, tag_t tag, void* buf,
   lci::status_t status = lci::post_send_x(rank, buf, length, tag, cq)
                              .device(device_p->device)
                              .user_context(req_p)
-                             .allow_ok(false)();
+                             .allow_done(false)();
 
   if (status.error.is_retry())
     delete req_p;
@@ -158,7 +158,7 @@ bool backend_lci2_t::recv(device_t device, rank_t rank, tag_t tag, void* buf,
   lci::status_t status = lci::post_recv_x(rank, buf, length, tag, cq)
                              .device(device_p->device)
                              .user_context(req_p)
-                             .allow_ok(false)();
+                             .allow_done(false)();
 
   if (status.error.is_retry())
     delete req_p;
@@ -186,7 +186,7 @@ bool backend_lci2_t::put(device_t device, rank_t rank, void* buf,
   lci::status_t status = lci::post_am_x(rank, buf, length, cq, device_p->rcomp)
                              .device(device_p->device)
                              .user_context(req_p)
-                             .allow_ok(false)();
+                             .allow_done(false)();
 
   if (status.error.is_retry())
     delete req_p;
