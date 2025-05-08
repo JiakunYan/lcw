@@ -1,4 +1,9 @@
 add_library(lcw)
+set_target_properties(
+  lcw
+  PROPERTIES CXX_STANDARD 17
+             CXX_STANDARD_REQUIRED ON
+             CXX_EXTENSIONS OFF)
 target_sources(
   lcw PRIVATE lcw.cpp env.cpp logger/logger.cpp backend/backend.cpp
               util/spinlock.cpp util/pcounter.cpp)
