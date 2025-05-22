@@ -27,6 +27,9 @@ void manager_cont_t::add_entry(entry_t entry)
   if (mpi::config.use_cont_imm) {
     flags |= MPIX_CONT_IMMEDIATE;
   }
+  if (mpi::config.use_cont_defer) {
+    flags |= MPIX_CONT_DEFER_COMPLETE;
+  }
   mpi::enter_stream_cs(entry.device);
   MPI_SAFECALL(MPIX_Continue(&entry.mpi_req, &complete_cb, entry_p, flags,
                              MPI_STATUS_IGNORE, cont_req));

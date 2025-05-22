@@ -9,7 +9,9 @@ namespace mpi
 {
 int g_rank = -1;
 int g_nranks = -1;
+char padding0[LCW_CACHE_LINE];
 std::atomic<int> g_pending_msg(0);
+char padding1[LCW_CACHE_LINE];
 config_t config;
 std::vector<std::shared_ptr<comp::manager_base_t>> g_comp_managers;
 std::atomic<int> g_ndevices(0);
@@ -135,6 +137,26 @@ void backend_mpi_t::initialize()
     }
     LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_CONT_REQ to %d\n",
             mpi::config.use_cont_req);
+  }
+
+  // Whether to use the poll-only flag
+  {
+    char* p = getenv("LCW_MPI_CONT_POLL_ONLY");
+    if (p) {
+      mpi::config.use_cont_poll_only = atoi(p);
+    }
+    LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_CONT_POLL_ONLY to %d\n",
+            mpi::config.use_cont_poll_only);
+  }
+
+  // Whether to use the defer flag
+  {
+    char* p = getenv("LCW_MPI_CONT_DEFER");
+    if (p) {
+      mpi::config.use_cont_defer = atoi(p);
+    }
+    LCW_Log(LCW_LOG_INFO, "comp", "Set LCW_MPI_CONT_DEFER to %d\n",
+            mpi::config.use_cont_defer);
   }
 #endif
 

@@ -61,6 +61,8 @@ struct config_t {
 #ifdef LCW_MPI_USE_CONT
   bool use_cont_imm = true;
   bool use_cont_req = false;
+  bool use_cont_poll_only = false;
+  bool use_cont_defer = false;
 #endif
   int g_pending_msg_max = 256;
   int g_num_comp_managers = 0;
@@ -72,21 +74,27 @@ extern std::atomic<int> g_ndevices;
 
 struct progress_engine_t {
   comp::entry_t put_entry;
+  char padding1[LCW_CACHE_LINE];
   spinlock_t put_entry_lock;
+  char padding2[LCW_CACHE_LINE];
   std::shared_ptr<comp::manager_base_t> comp_manager_p;
+  char padding3[LCW_CACHE_LINE];
 };
 
 struct device_t {
 #ifdef LCW_MPI_USE_STREAM
   spinlock_t stream_lock;
+  char padding0[LCW_CACHE_LINE];
   MPIX_Stream stream;
 #endif
   int id;
   bool enable_put;
   MPI_Comm comm;
-  std::vector<char> put_rbuf;
   tag_t max_tag_2sided;
   tag_t put_tag;
+  char padding1[LCW_CACHE_LINE];
+  std::vector<char> put_rbuf;
+  char padding2[LCW_CACHE_LINE];
   progress_engine_t pengine;
 };
 

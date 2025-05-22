@@ -18,7 +18,9 @@ struct manager_req_t : public manager_base_t {
   bool do_progress() override;
 
   std::deque<entry_t> entries;
+  char padding0[LCW_CACHE_LINE];
   spinlock_t lock;
+  char padding1[LCW_CACHE_LINE];
 };
 }  // namespace comp
 }  // namespace mpi
