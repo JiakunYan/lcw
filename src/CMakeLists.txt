@@ -19,13 +19,22 @@ option(LCW_TRY_ENABLE_BACKEND_LCI "whether to enable the LCI backend" ON)
 find_package(
   LCI
   CONFIG
-  REQUIRED
   HINTS
   ${LCI_ROOT}
   $ENV{LCI_ROOT}
   PATH_SUFFIXES
   lib/cmake
   lib64/cmake)
+if(NOT LCI_FOUND)
+  message(STATUS "Existing LCI installation not found. Try FetchContent.")
+  include(FetchContent)
+  FetchContent_Declare(
+    lci
+    GIT_REPOSITORY https://github.com/uiuc-hpc/lci.git
+    GIT_TAG master)
+  FetchContent_MakeAvailable(lci)
+endif()
+
 target_link_libraries(lcw PRIVATE LCI::LCT)
 if(LCW_TRY_ENABLE_BACKEND_LCI
    AND NOT LCI_WITH_LCT_ONLY
@@ -39,11 +48,13 @@ endif()
 
 # LCI2
 option(LCW_TRY_ENABLE_BACKEND_LCI2 "whether to enable the LCI2 backend" ON)
+message(STATUS "LCI_WITH_LCT_ONLY: ${LCI_WITH_LCT_ONLY}")
+message(STATUS "LCI_VERSION: ${LCI_VERSION}")
 if(LCW_TRY_ENABLE_BACKEND_LCI2
    AND NOT LCI_WITH_LCT_ONLY
    AND LCI_VERSION VERSION_GREATER_EQUAL 2.0.0)
   set(LCW_ENABLE_BACKEND_LCI2 ON)
-  target_link_libraries(lcw PRIVATE LCI::LCI)
+  target_link_libraries(lcw PRIVATE LCI::lci)
   target_sources(lcw PRIVATE backend/lci2/backend_lci2.cpp)
 else()
   message(WARNING "LCI2 is not found. The LCI2 backend if not enabled.")

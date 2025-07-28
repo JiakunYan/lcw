@@ -12,16 +12,25 @@ endif()
 add_lcw_examples(hello_world.cpp pingpong_mt.cpp)
 find_package(Threads REQUIRED)
 target_link_libraries(pingpong_mt PRIVATE Threads::Threads)
+
 find_package(
   LCI
   CONFIG
-  REQUIRED
   HINTS
   ${LCI_ROOT}
   $ENV{LCI_ROOT}
   PATH_SUFFIXES
   lib/cmake
   lib64/cmake)
+if(NOT LCI_FOUND)
+  message(STATUS "Existing LCI installation not found. Try FetchContent.")
+  include(FetchContent)
+  FetchContent_Declare(
+    lci
+    GIT_REPOSITORY https://github.com/uiuc-hpc/lci.git
+    GIT_TAG master)
+  FetchContent_MakeAvailable(lci)
+endif()
 target_link_libraries(pingpong_mt PRIVATE LCI::LCT)
 
 add_subdirectory(mpi)
