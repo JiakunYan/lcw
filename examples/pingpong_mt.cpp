@@ -165,11 +165,11 @@ void worker_thread_fn(int worker_id)
     ret = posix_memalign((void**)&recv_buffer, PAGESIZE,
                          msg_size * config.recv_window);
     assert(ret == 0);
-    LCT_tbarrier_arrive_and_wait(tbarrier_all);
+    LCT_tbarrier_arrive_and_wait(tbarrier_worker);
     if (worker_id == 0) {
       lcw::barrier(device.device);
     }
-    LCT_tbarrier_arrive_and_wait(tbarrier_all);
+    LCT_tbarrier_arrive_and_wait(tbarrier_worker);
     auto start_time = LCT_now();
     for (int i = 0; i < config.niters; ++i) {
       if (nranks == 1 || rank < nranks / 2) {
@@ -333,11 +333,11 @@ void worker_thread_fn(int worker_id)
         }
       }
     }
-    LCT_tbarrier_arrive_and_wait(tbarrier_all);
+    LCT_tbarrier_arrive_and_wait(tbarrier_worker);
     if (worker_id == 0) {
       lcw::barrier(device.device);
     }
-    LCT_tbarrier_arrive_and_wait(tbarrier_all);
+    LCT_tbarrier_arrive_and_wait(tbarrier_worker);
     auto total_time = LCT_now() - start_time;
     double total_time_s = LCT_time_to_s(total_time);
     double msg_rate = config.niters * nworkers * nranks * config.send_window /
