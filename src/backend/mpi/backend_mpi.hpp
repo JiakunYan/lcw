@@ -59,12 +59,12 @@ struct config_t {
 #endif
   bool use_stream = false;
 #ifdef LCW_MPI_USE_CONT
-  bool use_cont_imm = true;
+  bool use_cont_imm = false;
   bool use_cont_req = false;
   bool use_cont_poll_only = false;
   bool use_cont_defer = false;
 #endif
-  int g_pending_msg_max = 256;
+  int g_pending_msg_max = 0;
   int g_num_comp_managers = 0;
 };
 extern config_t config;
