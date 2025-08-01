@@ -256,6 +256,8 @@ void worker_thread_fn(int worker_id)
       } else {
         // The receiver
         // first recv
+        // We have to use send_buffer here in case the send_window and recv_window
+        // are different.
         for (int j = 0; j < config.send_window; ++j) {
           if (config.test_mode) {
             memset(send_buffer + j * msg_size, 0, msg_size);
@@ -276,7 +278,8 @@ void worker_thread_fn(int worker_id)
           }
           do_computation();
           if (config.test_mode) {
-            assert(rreq.device == device.device);
+            assert(rreq.device == device.device ||
+                   rreq.op == lcw::op_t::PUT_SIGNAL);
             assert(rreq.length == msg_size);
             assert(rreq.op == ((config.op == lcw::op_t::SEND)
                                    ? lcw::op_t::RECV
