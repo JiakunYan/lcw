@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [ "master", "develop" ]
+  pull_request:
+    branches: [ "master", "develop" ]
+
+jobs:
+  format-code:
+    runs-on: ubuntu-latest
+    name: Check Code Formatting
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt update && sudo apt install -y clang-format python3-pip
+          pip install --upgrade cmake-format
+
+      - name: Run Format Check
+        run: |
+          ./format.sh
+          git diff --exit-code > /tmp/format_results.txt
+
+      - name: Display Format Check Results
+        if: always()
+        run: |
+          cat /tmp/format_results.txt
+
+      - name: Upload Format Check Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: format-check-results
+          path: /tmp/format_results.txt
+
+  build-and-test:
+    # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
+    # You can convert this to a matrix build if you need cross-platform coverage.
+    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        build_type: [Debug, Release]
+    name: Build and Test (${{ matrix.os }}, ${{ matrix.build_type }})
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libfabric-bin libfabric-dev
+
+      - name: Install Dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install cmake ninja libfabric
+
+      - name: Verify Installation
+        run: |
+          cmake --version
+          ninja --version
+          fi_info --version
+
+      - name: Configure CMake
+        shell: bash
+        run: |
+          cmake \
+            -Bbuild \
+            -GNinja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DLCW_DEBUG=ON \
+            .
+
+      - name: Build
+        shell: bash
+        run: |
+            cmake --build build --target all
+
+      - name: Test
+        shell: bash
+        run: |
+            cd build
+            ctest --extra-verbose --timeout 300 --rerun-failed --output-on-failure
