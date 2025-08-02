@@ -75,7 +75,6 @@ bool backend_lci2_t::poll_cq(comp_t completion, request_t* request)
   lci::comp_t cq(static_cast<void*>(completion));
   lci::status_t status = lci::cq_pop(cq);
   if (status.error.is_retry()) return false;
-  lci::buffer_t buffer = status.data.get_buffer();
   if (status.user_context == nullptr) {
     // get PUT_SIGNAL
     *request = {
@@ -83,8 +82,8 @@ bool backend_lci2_t::poll_cq(comp_t completion, request_t* request)
         .device = nullptr,
         .rank = status.rank,
         .tag = static_cast<tag_t>(status.tag),
-        .buffer = buffer.base,
-        .length = static_cast<int64_t>(buffer.size),
+        .buffer = status.buffer,
+        .length = static_cast<int64_t>(status.size),
         .user_context = nullptr,
     };
   } else {
@@ -92,7 +91,7 @@ bool backend_lci2_t::poll_cq(comp_t completion, request_t* request)
     *request = *ctx_p;
     delete ctx_p;
     if (request->op == op_t::RECV || request->op == op_t::PUT_SIGNAL) {
-      request->length = buffer.size;
+      request->length = status.size;
     }
   }
   switch (request->op) {
