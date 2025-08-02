@@ -7,12 +7,12 @@ std::unique_ptr<backend_base_t> alloc_backend(backend_t backend)
   if (backend == backend_t::AUTO) {
     // Default auto backend is MPI.
     backend =
-#ifdef LCW_ENABLE_BACKEND_MPI
-        backend_t::MPI;
+#ifdef LCW_ENABLE_BACKEND_LCI2
+        backend_t::LCI2;
 #elif defined(LCW_ENABLE_BACKEND_LCI)
         backend_t::LCI;
 #else
-        backend_t::LCI2;
+        backend_t::MPI;
 #endif
     // Check env var setting
     char* p = getenv("LCW_BACKEND_AUTO");
