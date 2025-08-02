@@ -92,4 +92,5 @@ jobs:
         shell: bash
         run: |
             cd build
+            export PATH=_deps/lci-src/:$PATH
             ctest --extra-verbose --timeout 300 --rerun-failed --output-on-failure

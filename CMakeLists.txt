@@ -19,7 +19,7 @@ include(AddLCW)
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
 # ##############################################################################
-# What parts of LCI to build
+# What parts of LCW to build
 # ##############################################################################
 option(LCW_WITH_EXAMPLES "Build LCW examples" ON)
 
@@ -31,6 +31,16 @@ set(LCW_CACHE_LINE
     64
     CACHE STRING "Size of cache line (bytes)")
 option(LCW_ENABLE_PCOUNTER "Enable performance counters" OFF)
+
+# ##############################################################################
+# LCI Testing related options
+# ##############################################################################
+set(LCW_USE_CTEST_LAUNCHER
+    lcrun
+    CACHE STRING "exective to be used in ctest")
+set(LCW_USE_CTEST_ARGS
+    ""
+    CACHE STRING "arguments to be used in ctest")
 
 # ##############################################################################
 # Add subdirectories
