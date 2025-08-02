@@ -256,8 +256,8 @@ void worker_thread_fn(int worker_id)
       } else {
         // The receiver
         // first recv
-        // We have to use send_buffer here in case the send_window and recv_window
-        // are different.
+        // We have to use send_buffer here in case the send_window and
+        // recv_window are different.
         for (int j = 0; j < config.send_window; ++j) {
           if (config.test_mode) {
             memset(send_buffer + j * msg_size, 0, msg_size);
