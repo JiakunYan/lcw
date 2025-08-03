@@ -83,7 +83,6 @@ jobs:
           fi_info --version
           mpicc --version
           mpirun --version
-          which mpirun
 
       - name: Configure CMake
         shell: bash
@@ -96,6 +95,8 @@ jobs:
             -DLCW_USE_CTEST_LAUNCHER=mpirun \
             -DLCT_PMI_BACKEND_ENABLE_MPI=ON \
             -DLCI_NETWORK_BACKENDS=ofi \
+            -DLCI_USE_TCMALLOC=OFF \
+            -DCMAKE_VERBOSE_MAKEFILE=ON \
             .
 
       - name: Build
