@@ -74,24 +74,24 @@ bool backend_lci2_t::poll_cq(comp_t completion, request_t* request)
 {
   lci::comp_t cq(static_cast<void*>(completion));
   lci::status_t status = lci::cq_pop(cq);
-  if (status.error.is_retry()) return false;
-  if (status.user_context == nullptr) {
+  if (status.is_retry()) return false;
+  if (status.get_user_context() == nullptr) {
     // get PUT_SIGNAL
     *request = {
         .op = op_t::PUT_SIGNAL,
         .device = nullptr,
-        .rank = status.rank,
-        .tag = static_cast<tag_t>(status.tag),
-        .buffer = status.buffer,
-        .length = static_cast<int64_t>(status.size),
+        .rank = status.get_rank(),
+        .tag = static_cast<tag_t>(status.get_tag()),
+        .buffer = status.get_buffer(),
+        .length = static_cast<int64_t>(status.get_size()),
         .user_context = nullptr,
     };
   } else {
-    auto* ctx_p = static_cast<request_t*>(status.user_context);
+    auto* ctx_p = static_cast<request_t*>(status.get_user_context());
     *request = *ctx_p;
     delete ctx_p;
     if (request->op == op_t::RECV || request->op == op_t::PUT_SIGNAL) {
-      request->length = status.size;
+      request->length = status.get_size();
     }
   }
   switch (request->op) {
@@ -131,12 +131,12 @@ bool backend_lci2_t::send(device_t device, rank_t rank, tag_t tag, void* buf,
                              .user_context(req_p)
                              .allow_done(false)();
 
-  if (status.error.is_retry())
+  if (status.is_retry())
     delete req_p;
   else {
-    LCW_DBG_Assert(status.error.is_posted(), "Unexpected return value\n");
+    LCW_DBG_Assert(status.is_posted(), "Unexpected return value\n");
   }
-  return status.error.is_posted();
+  return status.is_posted();
 }
 
 bool backend_lci2_t::recv(device_t device, rank_t rank, tag_t tag, void* buf,
@@ -159,12 +159,12 @@ bool backend_lci2_t::recv(device_t device, rank_t rank, tag_t tag, void* buf,
                              .user_context(req_p)
                              .allow_done(false)();
 
-  if (status.error.is_retry())
+  if (status.is_retry())
     delete req_p;
   else {
-    LCW_DBG_Assert(status.error.is_posted(), "Unexpected return value\n");
+    LCW_DBG_Assert(status.is_posted(), "Unexpected return value\n");
   }
-  return status.error.is_posted();
+  return status.is_posted();
 }
 
 bool backend_lci2_t::put(device_t device, rank_t rank, void* buf,
@@ -187,12 +187,12 @@ bool backend_lci2_t::put(device_t device, rank_t rank, void* buf,
                              .user_context(req_p)
                              .allow_done(false)();
 
-  if (status.error.is_retry())
+  if (status.is_retry())
     delete req_p;
   else {
-    LCW_DBG_Assert(status.error.is_posted(), "Unexpected return value\n");
+    LCW_DBG_Assert(status.is_posted(), "Unexpected return value\n");
   }
-  return status.error.is_posted();
+  return status.is_posted();
 }
 
 tag_t backend_lci2_t::get_max_tag(device_t device)
