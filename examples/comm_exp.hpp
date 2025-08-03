@@ -8,9 +8,11 @@
 #include <errno.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <inttypes.h>
 
-void set_affinity(pthread_t pthread_handler, size_t target)
+void set_affinity([[maybe_unused]] pthread_t pthread_handler, [[maybe_unused]] size_t target)
 {
+#ifndef __APPLE__
   cpu_set_t cpuset;
   CPU_ZERO(&cpuset);
   CPU_SET(target, &cpuset);
@@ -19,6 +21,7 @@ void set_affinity(pthread_t pthread_handler, size_t target)
     fprintf(stderr, "ERROR %d thread affinity didn't work.\n", rv);
     exit(1);
   }
+#endif
 }
 
 void write_buffer(char* buf, size_t size, unsigned int seed)
@@ -38,7 +41,7 @@ void check_buffer(const char* buf, size_t size)
   for (int i = sizeof(seed); i < size; ++i) {
     char expected = static_cast<char>(rand_r(&seed));
     if (buf[i] != expected) {
-      fprintf(stderr, "%ld: check buffer failed! buf[%d] (%d) != %d\n",
+      fprintf(stderr, "%" PRId64 ": check buffer failed! buf[%d] (%d) != %d\n",
               lcw::get_rank(), i, buf[i], expected);
       abort();
     }
@@ -61,6 +64,7 @@ static inline double wutime()
 
 #define get_max(a, b) ((a > b) ? (a) : (b))
 
+#ifdef __x86_64__
 static inline unsigned long long get_rdtsc()
 {
   unsigned hi, lo;
@@ -79,6 +83,7 @@ static inline void busywait_cyc(unsigned long long delay)
     stop_cycle = get_rdtsc();
   } while (stop_cycle < start_plus_delay);
 }
+#endif
 
 #ifdef __cplusplus
 #include <mutex>

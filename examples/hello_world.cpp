@@ -3,6 +3,10 @@
 #include <unistd.h>
 #include <limits.h>
 
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX 255
+#endif
+
 int main(int argc, char** args)
 {
   char hostname[HOST_NAME_MAX + 1];

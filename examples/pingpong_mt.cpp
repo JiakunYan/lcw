@@ -52,6 +52,7 @@ std::atomic<int> g_device_sequence_control(0);
 
 // random
 struct rand_generator_t {
+  virtual ~rand_generator_t() = default;
   virtual int get() = 0;
 };
 
@@ -370,7 +371,7 @@ void worker_thread_fn(int worker_id)
   }
   lcw::free_cq(scq);
   if (config.op == lcw::op_t::SEND) lcw::free_cq(rcq);
-  if (rand_generator) delete rand_generator;
+  delete rand_generator;
 
   // free the devices
   if (worker_id == 0) progress_thread_stop = true;
