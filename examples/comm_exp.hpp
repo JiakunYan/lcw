@@ -10,7 +10,8 @@
 #include <unistd.h>
 #include <inttypes.h>
 
-void set_affinity([[maybe_unused]] pthread_t pthread_handler, [[maybe_unused]] size_t target)
+void set_affinity([[maybe_unused]] pthread_t pthread_handler,
+                  [[maybe_unused]] size_t target)
 {
 #ifndef __APPLE__
   cpu_set_t cpuset;

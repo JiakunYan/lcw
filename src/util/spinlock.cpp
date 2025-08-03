@@ -36,7 +36,7 @@ void spinlock_pthread_spinlock_unlock(void* p)
   auto l = reinterpret_cast<pthread_spinlock_t*>(p);
   pthread_spin_unlock(l);
 }
-#endif // ndef __APPLE__
+#endif  // ndef __APPLE__
 
 void* spinlock_pthread_mutex_alloc()
 {
@@ -88,21 +88,21 @@ void custom_spinlock_setup(custom_spinlock_op_t op)
 void custom_spinlock_init()
 {
   if (!setuped || config.force_default_spinlock) {
-    #ifdef __APPLE__
-      spinlock_op.name = "pthread_mutex";
-      spinlock_op.alloc = detail::spinlock_pthread_mutex_alloc;
-      spinlock_op.free = detail::spinlock_pthread_mutex_free;
-      spinlock_op.lock = detail::spinlock_pthread_mutex_lock;
-      spinlock_op.trylock = detail::spinlock_pthread_mutex_trylock;
-      spinlock_op.unlock = detail::spinlock_pthread_mutex_unlock;
-    #else
-      spinlock_op.name = "pthread_spinlock";
-      spinlock_op.alloc = detail::spinlock_pthread_spinlock_alloc;
-      spinlock_op.free = detail::spinlock_pthread_spinlock_free;
-      spinlock_op.lock = detail::spinlock_pthread_spinlock_lock;
-      spinlock_op.trylock = detail::spinlock_pthread_spinlock_trylock;
-      spinlock_op.unlock = detail::spinlock_pthread_spinlock_unlock;
-    #endif
+#ifdef __APPLE__
+    spinlock_op.name = "pthread_mutex";
+    spinlock_op.alloc = detail::spinlock_pthread_mutex_alloc;
+    spinlock_op.free = detail::spinlock_pthread_mutex_free;
+    spinlock_op.lock = detail::spinlock_pthread_mutex_lock;
+    spinlock_op.trylock = detail::spinlock_pthread_mutex_trylock;
+    spinlock_op.unlock = detail::spinlock_pthread_mutex_unlock;
+#else
+    spinlock_op.name = "pthread_spinlock";
+    spinlock_op.alloc = detail::spinlock_pthread_spinlock_alloc;
+    spinlock_op.free = detail::spinlock_pthread_spinlock_free;
+    spinlock_op.lock = detail::spinlock_pthread_spinlock_lock;
+    spinlock_op.trylock = detail::spinlock_pthread_spinlock_trylock;
+    spinlock_op.unlock = detail::spinlock_pthread_spinlock_unlock;
+#endif
   }
   LCW_Log(LCW_LOG_INFO, "init", "Use custom spinlock: %s\n",
           spinlock_op.name.c_str());
