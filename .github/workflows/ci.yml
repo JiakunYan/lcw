@@ -59,19 +59,31 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build libfabric-bin libfabric-dev
+          sudo apt-get install -y cmake ninja-build libfabric-bin libfabric-dev openmpi-bin libopenmpi-dev
 
       - name: Install Dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           brew update
-          brew install cmake ninja libfabric
+          brew install cmake ninja libfabric open-mpi
+
+      # - name: Install MPICH
+      #   run: |
+      #     wget https://www.mpich.org/static/downloads/4.3.1/mpich-4.3.1.tar.gz
+      #     tar -xzf mpich-4.3.1.tar.gz
+      #     cd mpich-4.3.1
+      #     ./configure --enable-thread-cs=per-vci --disable-fortran --disable-psm --disable-psm2 --disable-rdma --disable-efa
+      #     make -j4
+      #     sudo make install
 
       - name: Verify Installation
         run: |
           cmake --version
           ninja --version
           fi_info --version
+          mpicc --version
+          mpirun --version
+          which mpirun
 
       - name: Configure CMake
         shell: bash
@@ -81,7 +93,9 @@ jobs:
             -GNinja \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
             -DLCW_DEBUG=ON \
-            -DLCW_USE_CTEST_LAUNCHER=$(pwd)/build/_deps/lci-src/lcrun \
+            -DLCW_USE_CTEST_LAUNCHER=mpirun \
+            -DLCT_PMI_BACKEND_ENABLE_MPI=ON \
+            -DLCI_NETWORK_BACKENDS=ofi \
             .
 
       - name: Build
@@ -89,8 +103,16 @@ jobs:
         run: |
             cmake --build build --target all
 
-      - name: Test
+      - name: Test (with the LCI backend)
         shell: bash
         run: |
             cd build
+            export LCW_BACKEND_AUTO=lci2
+            ctest --extra-verbose --timeout 300 --rerun-failed --output-on-failure
+
+      - name: Test (with the MPI backend)
+        shell: bash
+        run: |
+            cd build
+            export LCW_BACKEND_AUTO=mpi
             ctest --extra-verbose --timeout 300 --rerun-failed --output-on-failure
