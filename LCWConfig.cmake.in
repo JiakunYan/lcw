@@ -13,5 +13,7 @@ if (NOT TARGET LCW::LCW)
     )
     target_include_directories(LCW::LCW INTERFACE ${LCW_INCLUDE_DIRS})
 
+    add_library(LCW::lcw alias LCW::LCW)
+
     check_required_components(LCW)
 endif()

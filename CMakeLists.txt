@@ -5,7 +5,16 @@ project(
   LANGUAGES CXX
   DESCRIPTION "Lightweight Communication Wrapper"
   HOMEPAGE_URL "https://github.com/JiakunYan/lcw")
-enable_testing()
+
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  set(LCW_ROOT_PROJECT ON)
+else()
+  set(LCW_ROOT_PROJECT OFF)
+endif()
+
+if(LCW_ROOT_PROJECT)
+  enable_testing()
+endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules")
 
@@ -53,7 +62,7 @@ endif()
 # ##############################################################################
 # Install
 # ##############################################################################
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+if(LCW_ROOT_PROJECT)
   configure_file(liblcw.pc.in liblcw.pc @ONLY)
 
   write_basic_package_version_file(

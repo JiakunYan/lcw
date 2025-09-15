@@ -1,4 +1,9 @@
 add_library(lcw)
+
+if(NOT LCW_ROOT_PROJECT)
+  add_library(LCW::lcw ALIAS lcw)
+endif()
+
 set_target_properties(
   lcw
   PROPERTIES CXX_STANDARD 17
