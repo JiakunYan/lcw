@@ -10,8 +10,15 @@ set_target_properties(
              CXX_STANDARD_REQUIRED ON
              CXX_EXTENSIONS OFF)
 target_sources(
-  lcw PRIVATE lcw.cpp env.cpp logger/logger.cpp backend/backend.cpp
-              util/spinlock.cpp util/pcounter.cpp)
+  lcw
+  PRIVATE lcw.cpp
+          env.cpp
+          logger/logger.cpp
+          backend/backend.cpp
+          util/spinlock.cpp
+          util/pcounter.cpp
+          comp/cq/cq.cpp
+          comp/handler/handler.cpp)
 target_include_directories(
   lcw
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>

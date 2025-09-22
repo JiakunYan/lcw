@@ -16,9 +16,6 @@ class backend_base_t
   virtual device_t alloc_device(int64_t max_put_length, comp_t put_comp) = 0;
   virtual void free_device(device_t device) = 0;
   virtual bool do_progress(device_t device) = 0;
-  virtual comp_t alloc_cq() = 0;
-  virtual void free_cq(comp_t completion) = 0;
-  virtual bool poll_cq(comp_t completion, request_t* request) = 0;
   virtual bool send(device_t device, rank_t rank, tag_t tag, void* buf,
                     int64_t length, comp_t completion, void* user_context) = 0;
   virtual bool recv(device_t device, rank_t rank, tag_t tag, void* buf,
@@ -27,6 +24,11 @@ class backend_base_t
                    comp_t completion, void* user_context) = 0;
   virtual tag_t get_max_tag(device_t device) = 0;
   virtual void barrier(device_t device) = 0;
+  virtual comp_t alloc_handler(handler_t handler);
+  virtual void free_handler(comp_t handler);
+  virtual comp_t alloc_cq();
+  virtual void free_cq(comp_t completion);
+  virtual bool poll_cq(comp_t completion, request_t* request);
 };
 
 std::unique_ptr<backend_base_t> alloc_backend(backend_t backend);

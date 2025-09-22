@@ -335,35 +335,13 @@ bool backend_mpi_t::do_progress(device_t device)
     }
     device_p->pengine.put_entry_lock.unlock();
     if (succeed) {
-      mpi::push_cq(entry);
+      mpi::signal_comp(entry);
     }
   }
   made_progress = succeed || made_progress;
   made_progress =
       device_p->pengine.comp_manager_p->do_progress() || made_progress;
   return made_progress;
-}
-
-comp_t backend_mpi_t::alloc_cq()
-{
-  LCT_queue_t cq =
-      LCT_queue_alloc(mpi::config.cq_type, mpi::config.default_cq_length);
-  return reinterpret_cast<comp_t>(cq);
-}
-
-void backend_mpi_t::free_cq(comp_t completion)
-{
-  auto cq = reinterpret_cast<LCT_queue_t>(completion);
-  LCT_queue_free(&cq);
-}
-
-bool backend_mpi_t::poll_cq(comp_t completion, request_t* request)
-{
-  auto cq = reinterpret_cast<LCT_queue_t>(completion);
-  auto* req = static_cast<request_t*>(LCT_queue_pop(cq));
-  if (req == nullptr) return false;
-  *request = *req;
-  return true;
 }
 
 bool backend_mpi_t::send(device_t device, rank_t rank, tag_t tag, void* buf,

@@ -59,4 +59,26 @@ std::unique_ptr<backend_base_t> alloc_backend(backend_t backend)
       return nullptr;
   }
 }
+
+comp_t backend_base_t::alloc_handler(handler_t handler)
+{
+  return util::alloc_handler(handler);
+}
+
+void backend_base_t::free_handler(comp_t handler)
+{
+  util::free_handler(handler);
+}
+
+comp_t backend_base_t::alloc_cq()
+{
+  return util::alloc_cq(mpi::config.default_cq_length);
+}
+
+void backend_base_t::free_cq(comp_t completion) { util::free_cq(completion); }
+
+bool backend_base_t::poll_cq(comp_t completion, request_t* request)
+{
+  return util::poll_cq(completion, request);
+}
 }  // namespace lcw

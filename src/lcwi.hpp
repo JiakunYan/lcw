@@ -16,6 +16,7 @@
 #include "util/pcounter.hpp"
 #include "util/spinlock.hpp"
 #include "logger/logger.hpp"
+#include "comp/comp_base.hpp"
 #include "backend/backend.hpp"
 #ifdef LCW_ENABLE_BACKEND_LCI
 #include "backend/lci/backend_lci.hpp"

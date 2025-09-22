@@ -48,7 +48,7 @@ bool manager_req_t::do_progress()
     entry.request->rank = status.MPI_SOURCE;
   }
   LCW_Log(LCW_LOG_TRACE, "comp", "Release entry %p\n", req);
-  push_cq(entry);
+  signal_comp(entry);
   return true;
 }
 }  // namespace comp

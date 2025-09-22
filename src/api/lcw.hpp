@@ -106,6 +106,12 @@ struct request_t {
 };
 
 /**
+ * @ingroup LCW_COMP
+ * @brief The completion handler type
+ */
+using handler_t = void (*)(request_t* request);
+
+/**
  * @ingroup LCW_SETUP
  * @brief Initialize the LCW runtime. No LCW calls are allowed to be called
  * before LCW_initialize except @ref LCW_initialized.
@@ -158,6 +164,18 @@ LCW_API void free_device(device_t device);
  * @return Whether some works have been done
  */
 LCW_API bool do_progress(device_t device);
+
+/**
+ * @ingroup LCW_COMM
+ * @brief Allocate a completion handler
+ */
+LCW_API comp_t alloc_handler(handler_t handler);
+
+/**
+ * @ingroup LCW_COMM
+ * @brief Free a completion handler
+ */
+LCW_API void free_handler(comp_t handler);
 
 /**
  * @ingroup LCW_COMP

@@ -29,9 +29,6 @@ class backend_mpi_t : public backend_base_t
   device_t alloc_device(int64_t max_put_length, comp_t put_comp) override;
   void free_device(device_t device) override;
   bool do_progress(device_t device) override;
-  comp_t alloc_cq() override;
-  void free_cq(comp_t completion) override;
-  bool poll_cq(comp_t completion, request_t* request) override;
   bool send(device_t device, rank_t rank, tag_t tag, void* buf, int64_t length,
             comp_t completion, void* user_context) override;
   bool recv(device_t device, rank_t rank, tag_t tag, void* buf, int64_t length,
@@ -118,9 +115,8 @@ static inline void leave_stream_cs(lcw::device_t device)
 #endif
 }
 
-static void push_cq(const comp::entry_t& entry)
+static void signal_comp(const comp::entry_t& entry)
 {
-  auto cq = reinterpret_cast<LCT_queue_t>(entry.completion);
   switch (entry.request->op) {
     case op_t::SEND:
       if (config.g_pending_msg_max > 0)
@@ -140,7 +136,7 @@ static void push_cq(const comp::entry_t& entry)
       break;
   }
   pcounter::add(pcounter::comp_produce);
-  LCT_queue_push(cq, entry.request);
+  util::signal_comp(entry.completion, entry.request);
 }
 }  // namespace mpi
 }  // namespace lcw
