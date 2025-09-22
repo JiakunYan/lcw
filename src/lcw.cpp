@@ -73,6 +73,20 @@ bool do_progress(device_t device)
   return backend_p->do_progress(device);
 }
 
+comp_t alloc_handler(handler_t handler)
+{
+  LCW_Assert(backend_p != nullptr,
+             "LCW has not been initialized or has been finalized!\n");
+  return backend_p->alloc_handler(handler);
+}
+
+void free_handler(comp_t handler)
+{
+  LCW_Assert(backend_p != nullptr,
+             "LCW has not been initialized or has been finalized!\n");
+  backend_p->free_handler(handler);
+}
+
 comp_t alloc_cq()
 {
   LCW_Assert(backend_p != nullptr,
