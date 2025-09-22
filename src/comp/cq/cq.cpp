@@ -12,12 +12,16 @@ class comp_cq_t : public comp_base_t
     cq_ = LCT_queue_alloc(LCT_QUEUE_LCRQ, default_cq_length);
   }
   ~comp_cq_t() { LCT_queue_free(&cq_); }
-  void signal(request_t* request) override { LCT_queue_push(cq_, request); }
+  void signal(request_t request) override { 
+    auto req = new request_t(request);
+    LCT_queue_push(cq_, req);
+  }
   bool poll(request_t* request)
   {
     auto* req = static_cast<request_t*>(LCT_queue_pop(cq_));
     if (req == nullptr) return false;
     *request = *req;
+    delete req;
     return true;
   }
 

@@ -90,7 +90,7 @@ class comp_handler_lci_t : public lci::comp_impl_t
   void signal(lci::status_t status) override
   {
     request_t request = get_request_from_status(status);
-    m_handler(&request);
+    m_handler(request);
   }
 
  private:

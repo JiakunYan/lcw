@@ -9,7 +9,7 @@ class comp_handler_t : public comp_base_t
  public:
   comp_handler_t(handler_t handler) : handler_(handler) {}
   ~comp_handler_t() = default;
-  void signal(request_t* request) override { handler_(request); }
+  void signal(request_t request) override { handler_(request); }
 
  private:
   handler_t handler_;

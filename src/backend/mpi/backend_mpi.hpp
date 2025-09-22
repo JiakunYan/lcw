@@ -136,7 +136,8 @@ static void signal_comp(const comp::entry_t& entry)
       break;
   }
   pcounter::add(pcounter::comp_produce);
-  util::signal_comp(entry.completion, entry.request);
+  util::signal_comp(entry.completion, *entry.request);
+  delete entry.request;
 }
 }  // namespace mpi
 }  // namespace lcw

@@ -60,8 +60,7 @@ void gex_reqhandler(gex_Token_t token, void* am_buf, size_t nbytes,
   memcpy(buffer, am_buf, nbytes);
 
   auto device = gex_detail::g_devices[device_idx];
-  auto* req_p = new request_t;
-  *req_p = {
+  request_t request = {
       .op = op_t::PUT_SIGNAL,
       .device = reinterpret_cast<device_t>(device),
       .rank = rank,
@@ -72,7 +71,7 @@ void gex_reqhandler(gex_Token_t token, void* am_buf, size_t nbytes,
   };
 
   pcounter::add(pcounter::put_signal);
-  util::signal_comp(device->comp, req_p);
+  util::signal_comp(device->comp, request);
 }
 
 void backend_gex_t::barrier(device_t device) { gex_detail::barrier(); }
@@ -151,8 +150,7 @@ bool backend_gex_t::put(device_t device, rank_t rank, void* buf, int64_t length,
                         comp_t completion, void* user_context)
 {
   auto device_p = reinterpret_cast<gex_detail::device_impl_t*>(device);
-  auto* req_p = new request_t;
-  *req_p = {
+  request_t request = {
       .op = op_t::PUT,
       .device = device,
       .rank = rank,
@@ -165,7 +163,7 @@ bool backend_gex_t::put(device_t device, rank_t rank, void* buf, int64_t length,
   CHECK_GEX(gex_AM_RequestMedium1(
       gex_detail::tm, rank, gex_detail::gex_handler_idx, buf, length,
       GEX_EVENT_NOW, 0, static_cast<gex_AM_Arg_t>(device_p->id)));
-  util::signal_comp(completion, req_p);
+  util::signal_comp(completion, request);
   return true;
 }
 

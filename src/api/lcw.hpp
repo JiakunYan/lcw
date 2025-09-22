@@ -109,7 +109,7 @@ struct request_t {
  * @ingroup LCW_COMP
  * @brief The completion handler type
  */
-using handler_t = void (*)(request_t* request);
+using handler_t = void (*)(request_t request);
 
 /**
  * @ingroup LCW_SETUP
