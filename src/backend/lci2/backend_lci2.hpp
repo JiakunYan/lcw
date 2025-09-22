@@ -14,6 +14,8 @@ class backend_lci2_t : public backend_base_t
   device_t alloc_device(int64_t max_put_length, comp_t put_comp) override;
   void free_device(device_t device) override;
   bool do_progress(device_t device) override;
+  comp_t alloc_handler(handler_t handler) override;
+  void free_handler(comp_t handler) override;
   comp_t alloc_cq() override;
   void free_cq(comp_t completion) override;
   bool poll_cq(comp_t completion, request_t* request) override;
