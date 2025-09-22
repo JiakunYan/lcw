@@ -32,11 +32,11 @@ const char* const clientName = "LCW";
 const gex_AM_Index_t gex_handler_idx = GEX_AM_INDEX_BASE;
 const int GEX_NARGS = 1;
 
-LCT_queue_t cq;
+comp_t comp;
 
 struct device_impl_t {
   int id;
-  LCT_queue_t cq;
+  comp_t comp;
   device_impl_t() = default;
 };
 
@@ -71,7 +71,8 @@ void gex_reqhandler(gex_Token_t token, void* am_buf, size_t nbytes,
       .user_context = nullptr,
   };
 
-  LCT_queue_push(device->cq, req_p);
+  pcounter::add(pcounter::put_signal);
+  util::signal_comp(device->comp, req_p);
 }
 
 void backend_gex_t::barrier(device_t device) { gex_detail::barrier(); }
@@ -114,7 +115,7 @@ device_t backend_gex_t::alloc_device(int64_t max_put_length, comp_t put_comp)
   auto* device_p = new gex_detail::device_impl_t;
   gex_detail::g_devices.push_back(device_p);
   device_p->id = gex_detail::g_devices.size() - 1;
-  device_p->cq = reinterpret_cast<LCT_queue_t>(put_comp);
+  device_p->comp = reinterpret_cast<comp_t>(put_comp);
 
   auto device = reinterpret_cast<device_t>(device_p);
   return device;
@@ -130,43 +131,6 @@ bool backend_gex_t::do_progress(device_t device)
 {
   CHECK_GEX(gasnet_AMPoll());
   return false;
-}
-
-comp_t backend_gex_t::alloc_cq()
-{
-  auto cq = LCT_queue_alloc(LCT_QUEUE_ARRAY_ATOMIC_FAA, 65536);
-  return reinterpret_cast<comp_t>(cq);
-}
-
-void backend_gex_t::free_cq(comp_t completion)
-{
-  auto cq = reinterpret_cast<LCT_queue_t>(completion);
-  LCT_queue_free(&cq);
-}
-
-bool backend_gex_t::poll_cq(comp_t completion, request_t* request)
-{
-  auto cq = reinterpret_cast<LCT_queue_t>(completion);
-  void* ret = LCT_queue_pop(cq);
-  if (ret == nullptr) return false;
-  auto* req = static_cast<request_t*>(ret);
-  *request = *req;
-  delete req;
-  switch (request->op) {
-    case op_t::SEND:
-      pcounter::add(pcounter::send_end);
-      break;
-    case op_t::RECV:
-      pcounter::add(pcounter::recv_end);
-      break;
-    case op_t::PUT:
-      pcounter::add(pcounter::put_end);
-      break;
-    case op_t::PUT_SIGNAL:
-      pcounter::add(pcounter::put_signal);
-      break;
-  }
-  return true;
 }
 
 bool backend_gex_t::send(device_t device, rank_t rank, tag_t tag, void* buf,
@@ -187,7 +151,6 @@ bool backend_gex_t::put(device_t device, rank_t rank, void* buf, int64_t length,
                         comp_t completion, void* user_context)
 {
   auto device_p = reinterpret_cast<gex_detail::device_impl_t*>(device);
-  auto cq = reinterpret_cast<LCT_queue_t>(completion);
   auto* req_p = new request_t;
   *req_p = {
       .op = op_t::PUT,
@@ -202,7 +165,7 @@ bool backend_gex_t::put(device_t device, rank_t rank, void* buf, int64_t length,
   CHECK_GEX(gex_AM_RequestMedium1(
       gex_detail::tm, rank, gex_detail::gex_handler_idx, buf, length,
       GEX_EVENT_NOW, 0, static_cast<gex_AM_Arg_t>(device_p->id)));
-  LCT_queue_push(cq, req_p);
+  util::signal_comp(completion, req_p);
   return true;
 }
 

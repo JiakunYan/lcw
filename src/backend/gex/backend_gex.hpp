@@ -14,9 +14,6 @@ class backend_gex_t : public backend_base_t
   device_t alloc_device(int64_t max_put_length, comp_t put_comp) override;
   void free_device(device_t device) override;
   bool do_progress(device_t device) override;
-  comp_t alloc_cq();
-  void free_cq(comp_t completion);
-  bool poll_cq(comp_t completion, request_t* request);
   bool send(device_t device, rank_t rank, tag_t tag, void* buf, int64_t length,
             comp_t completion, void* user_context);
   bool recv(device_t device, rank_t rank, tag_t tag, void* buf, int64_t length,
