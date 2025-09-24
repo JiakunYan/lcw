@@ -12,7 +12,8 @@ class comp_cq_t : public comp_base_t
     cq_ = LCT_queue_alloc(LCT_QUEUE_LCRQ, default_cq_length);
   }
   ~comp_cq_t() { LCT_queue_free(&cq_); }
-  void signal(request_t request) override { 
+  void signal(request_t request) override
+  {
     auto req = new request_t(request);
     LCT_queue_push(cq_, req);
   }

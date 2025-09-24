@@ -192,4 +192,12 @@ void barrier(device_t device)
              "LCW has not been initialized or has been finalized!\n");
   backend_p->barrier(device);
 }
+
+void set_custom_allocator(allocator_base_t* allocator)
+{
+  LCW_Assert(backend_p != nullptr,
+             "LCW has not been initialized or has been finalized!\n");
+  backend_p->set_custom_allocator(allocator);
+}
+
 }  // namespace lcw

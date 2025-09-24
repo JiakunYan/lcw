@@ -20,6 +20,7 @@ namespace lcw
 {
 class backend_mpi_t : public backend_base_t
 {
+ public:
   std::string get_name() const override { return "mpi"; }
   backend_t get_backend() const override { return backend_t::MPI; }
   void initialize() override;

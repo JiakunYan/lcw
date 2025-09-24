@@ -46,6 +46,8 @@ if(NOT LCI_FOUND)
     GIT_TAG master)
   FetchContent_MakeAvailable(lci)
 endif()
+message(STATUS "LCI_WITH_LCT_ONLY: ${LCI_WITH_LCT_ONLY}")
+message(STATUS "LCI_VERSION: ${LCI_VERSION}")
 
 target_link_libraries(lcw PRIVATE LCI::LCT)
 if(LCW_TRY_ENABLE_BACKEND_LCI
@@ -60,8 +62,6 @@ endif()
 
 # LCI2
 option(LCW_TRY_ENABLE_BACKEND_LCI2 "whether to enable the LCI2 backend" ON)
-message(STATUS "LCI_WITH_LCT_ONLY: ${LCI_WITH_LCT_ONLY}")
-message(STATUS "LCI_VERSION: ${LCI_VERSION}")
 if(LCW_TRY_ENABLE_BACKEND_LCI2
    AND NOT LCI_WITH_LCT_ONLY
    AND LCI_VERSION VERSION_GREATER_EQUAL 2.0.0)

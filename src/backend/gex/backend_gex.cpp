@@ -32,6 +32,9 @@ const char* const clientName = "LCW";
 const gex_AM_Index_t gex_handler_idx = GEX_AM_INDEX_BASE;
 const int GEX_NARGS = 1;
 
+// We have to keep a global copy to use in the handler
+allocator_base_t* g_allocator_copy = nullptr;
+
 comp_t comp;
 
 struct device_impl_t {
@@ -56,7 +59,8 @@ void gex_reqhandler(gex_Token_t token, void* am_buf, size_t nbytes,
   gex_TI_t rc = gex_Token_Info(token, &info, GEX_TI_SRCRANK);
   gex_Rank_t rank = info.gex_srcrank;
 
-  void* buffer = malloc(nbytes);
+  void* buffer = gex_detail::g_allocator_copy->allocate(nbytes);
+  LCW_Assert(buffer != nullptr, "Out of memory (size %ld)\n", nbytes);
   memcpy(buffer, am_buf, nbytes);
 
   auto device = gex_detail::g_devices[device_idx];
@@ -74,7 +78,7 @@ void gex_reqhandler(gex_Token_t token, void* am_buf, size_t nbytes,
   util::signal_comp(device->comp, request);
 }
 
-void backend_gex_t::barrier(device_t device) { gex_detail::barrier(); }
+backend_gex_t::backend_gex_t() { gex_detail::g_allocator_copy = m_allocator; }
 
 void backend_gex_t::initialize()
 {
@@ -171,6 +175,14 @@ tag_t backend_gex_t::get_max_tag(device_t device)
 {
   return gex_AM_MaxRequestMedium(gex_detail::tm, GEX_RANK_INVALID,
                                  GEX_EVENT_NOW, 0, gex_detail::GEX_NARGS);
+}
+
+void backend_gex_t::barrier(device_t device) { gex_detail::barrier(); }
+
+void backend_gex_t::set_custom_allocator(allocator_base_t* allocator)
+{
+  backend_base_t::set_custom_allocator(allocator);
+  gex_detail::g_allocator_copy = allocator;
 }
 
 }  // namespace lcw

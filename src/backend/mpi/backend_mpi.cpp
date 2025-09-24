@@ -323,10 +323,8 @@ bool backend_mpi_t::do_progress(device_t device)
         entry.request->rank = status.MPI_SOURCE;
         // Copy the data out and repost the receive
         LCW_Assert(entry.request->op == op_t::PUT_SIGNAL, "Unexpected op\n");
-        void* buffer;
-        int ret =
-            posix_memalign(&buffer, LCW_CACHE_LINE, entry.request->length);
-        LCW_Assert(ret == 0, "posix_memalign(%ld) failed!\n",
+        void* buffer = m_allocator->allocate(entry.request->length);
+        LCW_Assert(buffer != nullptr, "Out of memory (size %ld)\n",
                    entry.request->length);
         memcpy(buffer, entry.request->buffer, entry.request->length);
         entry.request->buffer = buffer;

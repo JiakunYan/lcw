@@ -5,6 +5,8 @@ namespace lcw
 {
 class backend_gex_t : public backend_base_t
 {
+ public:
+  backend_gex_t();
   std::string get_name() const override { return "gex"; }
   backend_t get_backend() const override { return backend_t::GEX; }
   void initialize() override;
@@ -22,6 +24,7 @@ class backend_gex_t : public backend_base_t
            comp_t completion, void* user_context);
   tag_t get_max_tag(device_t device) override;
   void barrier(device_t device) override;
+  void set_custom_allocator(allocator_base_t* allocator) override;
 };
 }  // namespace lcw
 

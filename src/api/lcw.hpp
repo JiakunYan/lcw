@@ -133,15 +133,29 @@ LCW_API void finalize();
 
 /**
  * @ingroup LCW_SETUP
- * @return The rank of the current process.
+ * @return The rank of the current process. Deprecated, use get_rank_me()
+ * instead.
  */
 LCW_API int64_t get_rank();
 
 /**
  * @ingroup LCW_SETUP
- * @return The total number of processes in this application.
+ * @return The rank of the current process.
+ */
+LCW_API inline int64_t get_rank_me() { return get_rank(); }
+
+/**
+ * @ingroup LCW_SETUP
+ * @return The total number of processes in this application. Deprecated, use
+ * get_nranks_me() instead.
  */
 LCW_API int64_t get_nranks();
+
+/**
+ * @ingroup LCW_SETUP
+ * @return The total number of processes in this application.
+ */
+LCW_API inline int64_t get_rank_n() { return get_nranks(); }
 
 /**
  * @ingroup LCW_DEVICE
@@ -197,14 +211,18 @@ LCW_API bool poll_cq(comp_t completion, request_t* request);
 
 /**
  * @ingroup LCW_COMM
- * @brief post a send
+ * @brief post a send.
+ * @return whether the send is posted successfully (true) or needs to be
+ * retried (false).
  */
 LCW_API bool send(device_t device, rank_t rank, tag_t tag, void* buf,
                   int64_t length, comp_t completion, void* user_context);
 
 /**
  * @ingroup LCW_COMM
- * @brief post a receive
+ * @brief post a receive.
+ * @return whether the receive is posted successfully (true) or needs to be
+ * retried (false).
  */
 LCW_API bool recv(device_t device, rank_t rank, tag_t tag, void* buf,
                   int64_t length, comp_t completion, void* user_context);
@@ -212,6 +230,8 @@ LCW_API bool recv(device_t device, rank_t rank, tag_t tag, void* buf,
 /**
  * @ingroup LCW_COMM
  * @brief post a put
+ * @return whether the put is posted successfully (true) or needs to be
+ * retried (false).
  */
 LCW_API bool put(device_t device, rank_t rank, void* buf, int64_t length,
                  comp_t completion, void* user_context);
@@ -228,7 +248,10 @@ LCW_API tag_t get_max_tag(device_t device);
  */
 LCW_API void barrier(device_t device);
 
-// Custom spinlock
+/**
+ * @ingroup LCW_SETUP
+ * @brief Custom spinlock operations
+ */
 struct custom_spinlock_op_t {
   std::string name = "Unknown";
   void* (*alloc)() = nullptr;
@@ -237,7 +260,28 @@ struct custom_spinlock_op_t {
   bool (*trylock)(void*) = nullptr;
   void (*unlock)(void*) = nullptr;
 };
+
+/**
+ * @ingroup LCW_SETUP
+ * @brief Setup custom spinlock operations
+ */
 LCW_API void custom_spinlock_setup(custom_spinlock_op_t op);
+
+/**
+ * @ingroup LCW_SETUP
+ * @brief Base class for custom memory allocator
+ */
+struct allocator_base_t {
+  virtual void* allocate(size_t size) = 0;
+  virtual void deallocate(void* ptr) = 0;
+  virtual ~allocator_base_t() = default;
+};
+
+/**
+ * @ingroup LCW_SETUP
+ * @brief Setup a custom global default memory allocator
+ */
+LCW_API void set_custom_allocator(allocator_base_t* allocator);
 }  // namespace lcw
 
 #endif  // LCW_LCW_HPP

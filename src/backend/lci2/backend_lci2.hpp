@@ -5,6 +5,7 @@ namespace lcw
 {
 class backend_lci2_t : public backend_base_t
 {
+ public:
   std::string get_name() const override { return "lci2"; }
   backend_t get_backend() const override { return backend_t::LCI2; }
   void initialize() override;
@@ -27,6 +28,7 @@ class backend_lci2_t : public backend_base_t
            comp_t completion, void* user_context) override;
   tag_t get_max_tag(device_t device) override;
   void barrier(device_t device) override;
+  void set_custom_allocator(allocator_base_t* allocator) override;
 };
 }  // namespace lcw
 

@@ -238,4 +238,24 @@ void backend_lci2_t::barrier(device_t device)
   lci::barrier_x().device(device_p->device)();
 }
 
+class lci2_custom_allocator_t : public lci::allocator_base_t
+{
+ public:
+  lci2_custom_allocator_t(lcw::allocator_base_t* allocator)
+      : m_allocator(allocator)
+  {
+  }
+  void* allocate(size_t size) override { return m_allocator->allocate(size); }
+  void deallocate(void* ptr) override { m_allocator->deallocate(ptr); }
+
+ private:
+  lcw::allocator_base_t* m_allocator;
+};
+
+void backend_lci2_t::set_custom_allocator(allocator_base_t* allocator)
+{
+  lci2_custom_allocator_t* p = new lci2_custom_allocator_t(allocator);
+  lci::set_allocator(p);
+}
+
 }  // namespace lcw

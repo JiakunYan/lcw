@@ -23,7 +23,7 @@ comp_t alloc_handler(handler_t handler)
 
 void free_handler(comp_t handler)
 {
-  auto h = reinterpret_cast<comp_base_t*>(handler);
+  auto h = reinterpret_cast<comp_handler_t*>(handler);
   delete h;
 }
 

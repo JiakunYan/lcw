@@ -6,6 +6,7 @@ namespace lcw
 class backend_base_t
 {
  public:
+  backend_base_t();
   virtual ~backend_base_t() = default;
   virtual backend_t get_backend() const = 0;
   virtual std::string get_name() const = 0;
@@ -29,6 +30,10 @@ class backend_base_t
   virtual comp_t alloc_cq();
   virtual void free_cq(comp_t completion);
   virtual bool poll_cq(comp_t completion, request_t* request);
+  virtual void set_custom_allocator(allocator_base_t* allocator);
+
+ protected:
+  allocator_base_t* m_allocator;
 };
 
 std::unique_ptr<backend_base_t> alloc_backend(backend_t backend);

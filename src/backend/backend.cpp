@@ -60,6 +60,13 @@ std::unique_ptr<backend_base_t> alloc_backend(backend_t backend)
   }
 }
 
+struct allocator_default_t : public allocator_base_t {
+  void* allocate(size_t size) { return malloc(size); }
+  void deallocate(void* ptr) { free(ptr); }
+} m_allocator_default;
+
+backend_base_t::backend_base_t() : m_allocator(&m_allocator_default) {}
+
 comp_t backend_base_t::alloc_handler(handler_t handler)
 {
   return util::alloc_handler(handler);
@@ -81,4 +88,10 @@ bool backend_base_t::poll_cq(comp_t completion, request_t* request)
 {
   return util::poll_cq(completion, request);
 }
+
+void backend_base_t::set_custom_allocator(allocator_base_t* allocator)
+{
+  m_allocator = allocator;
+}
+
 }  // namespace lcw
