@@ -452,4 +452,9 @@ void backend_mpi_t::barrier(device_t device)
   MPI_SAFECALL(MPI_Barrier(device_p->comm));
 }
 
+comp_t backend_mpi_t::alloc_cq()
+{
+  return util::alloc_cq(mpi::config.default_cq_length);
+}
+
 }  // namespace lcw

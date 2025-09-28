@@ -38,6 +38,7 @@ class backend_mpi_t : public backend_base_t
            comp_t completion, void* user_context) override;
   tag_t get_max_tag(device_t device) override;
   void barrier(device_t device) override;
+  comp_t alloc_cq() override;
 };
 
 namespace mpi

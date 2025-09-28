@@ -77,10 +77,7 @@ void backend_base_t::free_handler(comp_t handler)
   util::free_handler(handler);
 }
 
-comp_t backend_base_t::alloc_cq()
-{
-  return util::alloc_cq(mpi::config.default_cq_length);
-}
+comp_t backend_base_t::alloc_cq() { return util::alloc_cq(65536); }
 
 void backend_base_t::free_cq(comp_t completion) { util::free_cq(completion); }
 
