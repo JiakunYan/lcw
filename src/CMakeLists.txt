@@ -2,6 +2,7 @@ add_library(lcw)
 
 if(NOT LCW_ROOT_PROJECT)
   add_library(LCW::lcw ALIAS lcw)
+  add_library(LCW::LCW ALIAS lcw)
 endif()
 
 set_target_properties(
