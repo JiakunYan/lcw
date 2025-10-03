@@ -55,8 +55,10 @@ set(LCW_USE_CTEST_ARGS
 # Add subdirectories
 # ##############################################################################
 add_subdirectory(src)
-if(LCW_WITH_EXAMPLES)
-  add_subdirectory(examples)
+if(LCW_ROOT_PROJECT)
+  if(LCW_WITH_EXAMPLES)
+    add_subdirectory(examples)
+  endif()
 endif()
 
 # ##############################################################################
