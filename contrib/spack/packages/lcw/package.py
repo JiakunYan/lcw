@@ -38,6 +38,7 @@ class Lcw(CMakePackage):
     depends_on("lci")
     depends_on("c", type="build")
     depends_on("cxx", type="build")
+    depends_on("cmake@3.12:", type="build")
 
     def cmake_args(self):
         args = [
