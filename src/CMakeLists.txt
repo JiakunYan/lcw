@@ -27,6 +27,9 @@ target_include_directories(
          $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 # LCI
+set(LCW_FETCH_LCI_TAG
+    "f72956b4609c796b5faac1c24a782dd8ac824ad6"
+    CACHE STRING "The tag to fetch for LCI") # master branch as of 2025-12-10
 option(LCW_TRY_ENABLE_BACKEND_LCI "whether to enable the LCI backend" ON)
 
 find_package(
@@ -44,7 +47,7 @@ if(NOT LCI_FOUND)
   FetchContent_Declare(
     lci
     GIT_REPOSITORY https://github.com/uiuc-hpc/lci.git
-    GIT_TAG master)
+    GIT_TAG ${LCW_FETCH_LCI_TAG})
   FetchContent_MakeAvailable(lci)
 endif()
 message(STATUS "LCI_WITH_LCT_ONLY: ${LCI_WITH_LCT_ONLY}")
@@ -58,7 +61,7 @@ if(LCW_TRY_ENABLE_BACKEND_LCI
   target_link_libraries(lcw PRIVATE LCI::LCI)
   target_sources(lcw PRIVATE backend/lci/backend_lci.cpp)
 else()
-  message(WARNING "LCI is not found. The LCI backend if not enabled.")
+  message(WARNING "LCI1 is not found. The LCI1 backend if not enabled.")
 endif()
 
 # LCI2
