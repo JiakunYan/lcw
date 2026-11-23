@@ -96,6 +96,7 @@ jobs:
             -DLCT_PMI_BACKEND_ENABLE_MPI=ON \
             -DLCI_NETWORK_BACKENDS=ofi \
             -DLCI_USE_TCMALLOC=OFF \
+            -DLCI_BACKEND_MAX_CQES_DEFAULT=1024 \
             -DCMAKE_VERBOSE_MAKEFILE=ON \
             .
 
