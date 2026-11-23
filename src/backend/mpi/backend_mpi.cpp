@@ -215,6 +215,8 @@ void post_put_recv(device_t device, comp_t completion)
                  entry.request->tag, device_p->comm);
   mpi::leave_stream_cs(device);
   device_p->pengine.put_entry = entry;
+  device_p->pengine.put_pending.store(entry.mpi_req != MPI_REQUEST_NULL,
+                                      std::memory_order_relaxed);
 }
 
 device_t backend_mpi_t::alloc_device(int64_t max_put_length, comp_t put_comp)
@@ -307,7 +309,7 @@ bool backend_mpi_t::do_progress(device_t device)
   MPI_Status status;
   mpi::comp::entry_t entry;
   if (device_p->enable_put &&
-      device_p->pengine.put_entry.mpi_req != MPI_REQUEST_NULL &&
+      device_p->pengine.put_pending.load(std::memory_order_relaxed) &&
       device_p->pengine.put_entry_lock.try_lock()) {
     if (device_p->pengine.put_entry.mpi_req != MPI_REQUEST_NULL) {
       mpi::enter_stream_cs(device);

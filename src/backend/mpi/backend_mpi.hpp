@@ -73,6 +73,7 @@ extern std::atomic<int> g_ndevices;
 
 struct progress_engine_t {
   comp::entry_t put_entry;
+  std::atomic<bool> put_pending{false};
   char padding1[LCW_CACHE_LINE];
   spinlock_t put_entry_lock;
   char padding2[LCW_CACHE_LINE];
