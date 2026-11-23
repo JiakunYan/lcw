@@ -330,7 +330,6 @@ bool backend_mpi_t::do_progress(device_t device)
                    entry.request->length);
         memcpy(buffer, entry.request->buffer, entry.request->length);
         entry.request->buffer = buffer;
-        device_p->pengine.put_pending.store(false, std::memory_order_relaxed);
         post_put_recv(entry.request->device, entry.completion);
       }
     }

@@ -37,8 +37,9 @@ bool manager_req_t::do_progress()
   }
   if (!succeed) {
     entries.push_back(entry);
+  } else {
+    nentries.store(entries.size(), std::memory_order_relaxed);
   }
-  nentries.store(entries.size(), std::memory_order_relaxed);
   lock.unlock();
   if (!succeed) return false;
   // We have got something
